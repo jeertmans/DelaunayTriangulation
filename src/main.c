@@ -1,9 +1,14 @@
 #include "inputs.h"
+#include "geometry_structure.h"
 #include <time.h>
 
 
 int main()
 {
+	Point *p1 = newPoint(0.1, 0.3);
+
+	printf("%f, %f\n", p1->x, p1->y);
+
 	// give a bit of entropy for the seed of rand()
 	// or it will always be the same sequence
 	int seed = (int) time(NULL);

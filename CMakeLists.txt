@@ -7,6 +7,7 @@ file(GLOB_RECURSE sources "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 add_executable(${EXEC}
                "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"
                "${CMAKE_CURRENT_SOURCE_DIR}/src/inputs.c"
+               "${CMAKE_CURRENT_SOURCE_DIR}/src/geometry_structure.c"
                # you can add other source file here !
                )
 
