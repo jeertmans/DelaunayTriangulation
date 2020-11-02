@@ -1,13 +1,72 @@
 #include "inputs.h"
 #include "geometry_structure.h"
+#include "delaunay.h"
 #include <time.h>
+#include <unistd.h>
+#include <libgen.h>
+#include <errno.h>
+#include <string.h>
+#include <getopt.h>
+
+#define OPTSTR "vi:p:n:h"
+#define USAGE_FMT  "%s [-v] [-p number_of_points] [-n smoothing_factor] [-h]\n"
+#define ERR_FOPEN_INPUT  "fopen(input, r)"
+#define ERR_FOPEN_OUTPUT "fopen(output, w)"
+#define ERR_DO_THE_NEEDFUL "do_the_needful blew up"
+#define DEFAULT_PROGNAME "lmeca2710_project"
+
+extern int errno;
+extern char *optarg;
+extern int opterr, optind;
+
+typedef struct options_t {
+	int p;
+	int n;
+} options_t;
 
 
-int main()
+void usage(char *progname, int opt);
+
+int main(int argc, char *argv[])
 {
-	Point *p1 = newPoint(0.1, 0.3);
+	int opt;
+	options_t options = {500, 4};
 
-	printf("%f, %f\n", p1->x, p1->y);
+	// Inspired from:
+	// https://opensource.com/article/19/5/how-write-good-c-main-function
+	while ((opt = getopt(argc, argv, OPTSTR)) != EOF) {
+		switch(opt) {
+        	case 'p':
+				options.p = atoi(optarg);
+              	break;
+			case 'n':
+				options.n = atoi(optarg);
+				break;
+			case 'h':
+			default:
+          		usage(basename(argv[0]), opt);
+              	/* NOTREACHED */
+              	break;
+			}
+       }
+
+	unsigned int n = (unsigned int) options.p;
+
+	Point *points = newRandomPoints(n);
+
+	for(int i = 0; i < n; i++) {
+		printPoint(&points[i]);
+	}
+
+	printf("Sorted\n");
+
+	qsort(points, n, sizeof(Point), comparePoints);
+
+	for(int i = 0; i < n; i++) {
+		printPoint(&points[i]);
+	}
+
+	free(points);
 
 	// give a bit of entropy for the seed of rand()
 	// or it will always be the same sequence
@@ -20,10 +79,10 @@ int main()
 	bov_window_t* window = bov_window_new(800, 800, "My first BOV program");
 	bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
 
-	const GLsizei nPoints = 500;
+	const GLsizei nPoints = (GLsizei) options.p;
 	GLfloat (*coord)[2] = malloc(sizeof(coord[0])*nPoints);
 #if 1 // put 1 for random polygon
-	random_polygon(coord, nPoints, 4);
+	random_polygon(coord, nPoints, options.n);
 #else
 	random_points(coord, nPoints);
 #endif
@@ -49,4 +108,10 @@ int main()
 	bov_window_delete(window);
 
 	return EXIT_SUCCESS;
+}
+
+void usage(char *progname, int opt) {
+	fprintf(stderr, USAGE_FMT, progname ? progname : DEFAULT_PROGNAME);
+   	exit(EXIT_FAILURE);
+   	/* NOTREACHED */
 }
