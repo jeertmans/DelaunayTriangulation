@@ -87,6 +87,13 @@ int main(int argc, char *argv[])
 	random_points(coord, nPoints);
 #endif
 
+	printf("BEGIN\n");
+
+	DelaunayTriangulation *delTri = initDelaunayTriangulation(coord, nPoints);
+	drawDelaunayTriangulation(delTri, window);
+
+	printf("END\n");
+
 	bov_points_t *coordDraw = bov_points_new(coord, nPoints, GL_STATIC_DRAW);
 	bov_points_set_color(coordDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
 	bov_points_set_outline_color(coordDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
@@ -102,6 +109,8 @@ int main(int argc, char *argv[])
 
 		bov_window_update(window);
 	}
+
+	bov_window_screenshot(window, "test.png");
 
 	bov_points_delete(coordDraw);
 	free(coord);

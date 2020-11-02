@@ -4,7 +4,7 @@
 #include "BOV.h"
 
 typedef struct DelaunayTriangulation {
-    // Allocating 
+    // Allocating
     GLsizei n_centers;
     GLfloat (*centers)[2];
 
@@ -17,5 +17,6 @@ typedef struct DelaunayTriangulation {
 } DelaunayTriangulation;
 
 DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n);
+void freeDelaunayTriangulation(DelaunayTriangulation *delTri);
 
 #endif

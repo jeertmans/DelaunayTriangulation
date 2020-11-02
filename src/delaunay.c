@@ -2,10 +2,52 @@
 
 DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n) {
     DelaunayTriangulation *delTri = (DelaunayTriangulation *) malloc(sizeof(DelaunayTriangulation));
+
+    // Points
     delTri->n_points = n;
     delTri->points = points;
+
+	// Centers and radii
     delTri->n_centers = 0;
     delTri->success = 0;
+
+	// Triangles
+
+	return delTri;
+}
+
+void freeDelaunayTriangulation(DelaunayTriangulation *delTri) {
+
+	free(delTri);
+}
+
+void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window) {
+    bov_points_t *pointsDraw = bov_points_new(delTri->points, delTri->n_points, GL_STATIC_DRAW);
+	bov_points_set_color(pointsDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
+	bov_points_set_outline_color(pointsDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
+	bov_points_t *linesDraw = NULL;
+
+	if (delTri->success) {
+		//linesDraw = bov_points_new(delTri->centers, delTri->)
+	}
+
+	while(!bov_window_should_close(window)){
+		bov_points_set_width(pointsDraw, 0.003);
+		bov_points_set_outline_width(pointsDraw, 0.002);
+		if (delTri->success) {
+			// bov_line_loop_draw(window, coordDraw, 0, nPoints);
+		}
+		// points_set_width(coordDraw, 0.003);
+		bov_points_set_outline_width(pointsDraw, -1.);
+		bov_points_draw(window, pointsDraw, 0, delTri->n_points);
+
+		bov_window_update(window);
+	}
+
+	if (delTri->success) {
+		bov_points_delete(linesDraw);
+	}
+	bov_points_delete(pointsDraw);
 }
 
 int pointInCircleFast(GLfloat point[2], GLfloat center[2], GLfloat radius) {
