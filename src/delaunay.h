@@ -19,4 +19,6 @@ typedef struct DelaunayTriangulation {
 DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n);
 void freeDelaunayTriangulation(DelaunayTriangulation *delTri);
 
+void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window);
+
 #endif

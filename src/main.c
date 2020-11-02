@@ -9,7 +9,13 @@
 #include <getopt.h>
 
 #define OPTSTR "vi:p:n:h"
-#define USAGE_FMT  "%s [-v] [-p number_of_points] [-n smoothing_factor] [-h]\n"
+#define USAGE_FMT  "%s \
+[-v verbose] \
+[-i input_file] \
+[-o output_file] \
+[-p number_of_points] \
+[-n smoothing_factor] \
+[-h]\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"
 #define ERR_DO_THE_NEEDFUL "do_the_needful blew up"
@@ -20,6 +26,9 @@ extern char *optarg;
 extern int opterr, optind;
 
 typedef struct options_t {
+	int v;
+	char *i;
+	char *o;
 	int p;
 	int n;
 } options_t;
@@ -30,7 +39,13 @@ void usage(char *progname, int opt);
 int main(int argc, char *argv[])
 {
 	int opt;
-	options_t options = {500, 4};
+	options_t options = {	// Default values
+		0,			// Verbosity
+		NULL,		// Input file
+		NULL,		// Output file
+		500,		// Number of points
+		4,			// Smoothing factor
+	};
 
 	// Inspired from:
 	// https://opensource.com/article/19/5/how-write-good-c-main-function
@@ -42,15 +57,38 @@ int main(int argc, char *argv[])
 			case 'n':
 				options.n = atoi(optarg);
 				break;
+			case 'i':
+				options.i = optarg;
+				break;
+			case 'o':
+				options.o = optarg;
+			case 'v':
+				options.v = 1;
+				break;
 			case 'h':
 			default:
           		usage(basename(argv[0]), opt);
               	/* NOTREACHED */
               	break;
 			}
-       }
+		}
+
+	if (options.v) {
+		if(options.i != NULL) {
+			printf("- Loading points from input file: %s\n", options.i);
+		}
+		else {
+			printf("- Generating %d random points with a smoothing factor of %d\n", options.p, options.n);
+		}
+		if(options.o != NULL) {
+			printf("- Saving results to file: %s\n", options.o);
+		}
+	}
 
 	unsigned int n = (unsigned int) options.p;
+
+	printf("LOL\n");
+	printf("Input file = %s\n", options.i);
 
 	Point *points = newRandomPoints(n);
 
@@ -109,8 +147,6 @@ int main(int argc, char *argv[])
 
 		bov_window_update(window);
 	}
-
-	bov_window_screenshot(window, "test.png");
 
 	bov_points_delete(coordDraw);
 	free(coord);

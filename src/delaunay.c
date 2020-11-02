@@ -40,7 +40,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		// points_set_width(coordDraw, 0.003);
 		bov_points_set_outline_width(pointsDraw, -1.);
 		bov_points_draw(window, pointsDraw, 0, delTri->n_points);
-
+		bov_window_screenshot(window, "test.ppm");
 		bov_window_update(window);
 	}
 
