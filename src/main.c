@@ -86,9 +86,7 @@ int main(int argc, char *argv[])
 	}
 
 	unsigned int n = (unsigned int) options.p;
-
-	printf("LOL\n");
-	printf("Input file = %s\n", options.i);
+	/*
 
 	Point *points = newRandomPoints(n);
 
@@ -105,6 +103,7 @@ int main(int argc, char *argv[])
 	}
 
 	free(points);
+	*/
 
 	// give a bit of entropy for the seed of rand()
 	// or it will always be the same sequence
@@ -112,25 +111,46 @@ int main(int argc, char *argv[])
 	srand(seed);
 
 	// we print the seed so you can get the distribution of points back
-	printf("seed=%d\n", seed);
+	if (options.v) printf("seed=%d\n", seed);
 
 	bov_window_t* window = bov_window_new(800, 800, "My first BOV program");
+	//glDisable(GL_CULL_FACE);
 	bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
 
-	const GLsizei nPoints = (GLsizei) options.p;
-	GLfloat (*coord)[2] = malloc(sizeof(coord[0])*nPoints);
-#if 1 // put 1 for random polygon
+#if 0 // put 1 for random polygon
+const GLsizei nPoints = (GLsizei) options.p;
+GLfloat (*coord)[2] = malloc(sizeof(coord[0])*nPoints);
 	random_polygon(coord, nPoints, options.n);
 #else
-	random_points(coord, nPoints);
+const GLsizei nPoints = 6;
+GLfloat coord[][2] = {
+	{0, 0},
+	{1, 0},
+	{0.5, 0.5},
+	{2, 2},
+	{4, 2},
+	{3, 4}
+};
+	//random_points(coord, nPoints);
 #endif
 
-	printf("BEGIN\n");
+	if (options.v) printf("BEGIN\n");
 
 	DelaunayTriangulation *delTri = initDelaunayTriangulation(coord, nPoints);
+
+	GLsizei ntri = nPoints / 3;
+
+	for (GLsizei i = 0; i < ntri; i++) {
+		delTri->triangles[i][0] = 3 * i;
+		delTri->triangles[i][1] = 3 * i + 1;
+		delTri->triangles[i][2] = 3 * i + 2;
+	}
+
+	delTri->n_triangles = ntri;
+
 	drawDelaunayTriangulation(delTri, window);
 
-	printf("END\n");
+	if (options.v) printf("END\n");
 
 	bov_points_t *coordDraw = bov_points_new(coord, nPoints, GL_STATIC_DRAW);
 	bov_points_set_color(coordDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
@@ -149,7 +169,7 @@ int main(int argc, char *argv[])
 	}
 
 	bov_points_delete(coordDraw);
-	free(coord);
+	//free(coord);
 	bov_window_delete(window);
 
 	return EXIT_SUCCESS;

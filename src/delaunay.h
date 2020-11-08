@@ -2,6 +2,7 @@
 #define _DELAUNAY_H
 
 #include "BOV.h"
+#include "math.h"
 
 typedef struct DelaunayTriangulation {
     // Allocating
@@ -14,6 +15,10 @@ typedef struct DelaunayTriangulation {
     // Keeping track of points
     GLsizei n_points;
     GLfloat (*points)[2];
+
+    // Triangles index
+    GLsizei n_triangles;
+    GLsizei (*triangles)[3];
 } DelaunayTriangulation;
 
 DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n);

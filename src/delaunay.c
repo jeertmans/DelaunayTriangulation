@@ -12,40 +12,87 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
     delTri->success = 0;
 
 	// Triangles
+	GLsizei n_triangles_max = n % 3 > 0 ? n / 3 : (n / 3) + 1;
+	delTri->n_triangles = 0;
+	delTri->triangles = malloc(sizeof(delTri->triangles[0]) * n_triangles_max);
 
 	return delTri;
 }
 
 void freeDelaunayTriangulation(DelaunayTriangulation *delTri) {
-
+	free(delTri->triangles);
 	free(delTri);
 }
 
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window) {
+	// Shorten variables
+	GLfloat (*points)[2] = delTri->points;
+	GLsizei n_points = delTri->n_points;
+
+	GLsizei (*triangles)[3] = delTri->triangles;
+	GLsizei n_triangles = delTri->n_triangles;
+
+	int success = delTri->success;
+	//
+
     bov_points_t *pointsDraw = bov_points_new(delTri->points, delTri->n_points, GL_STATIC_DRAW);
 	bov_points_set_color(pointsDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
 	bov_points_set_outline_color(pointsDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
-	bov_points_t *linesDraw = NULL;
 
-	if (delTri->success) {
-		//linesDraw = bov_points_new(delTri->centers, delTri->)
+	bov_points_set_width(pointsDraw, 0.03);
+	bov_points_set_outline_width(pointsDraw, 0.002);
+
+	// points_set_width(coordDraw, 0.003);
+	bov_points_set_outline_width(pointsDraw, -1.);
+	bov_points_t **trianglesDraw = NULL;
+
+	/*
+	for(int i = 0; i < delTri->n_points; i++) {
+		printf("(%.4f, %.4f)\n", delTri->points[i][0], delTri->points[i][1]);
+	}*/
+
+	success = 1;
+
+	if (success) {
+		trianglesDraw = (bov_points_t **) malloc(sizeof(bov_points_t*) * n_triangles);
+
+		for(GLsizei i = 0; i < n_triangles; i++) {
+			GLsizei *ind = triangles[i];
+			// Coordinates must be CCW !
+			GLfloat coord[][2] = {
+				{points[ind[0]][0], points[ind[0]][1]},
+				{points[ind[1]][0], points[ind[1]][1]},
+				{points[ind[2]][0], points[ind[2]][1]},
+			};
+			printf("Triangles[%d]: (%.2f, %.2f), (%.2f, %.2f), (%.2f, %.2f)\n",
+					i, coord[0][0], coord[0][1],  coord[1][0], coord[1][1], coord[2][0], coord[2][1]);
+
+			trianglesDraw[i] = bov_points_new(coord, 3, GL_STATIC_DRAW);
+			bov_points_set_color(trianglesDraw[i], (float[4]) {0.05, 0.1, 0.2, 0.6});
+			bov_points_set_outline_width(trianglesDraw[i], 0.025);
+			bov_points_set_width(trianglesDraw[i], 0.0);
+			bov_points_set_outline_color(trianglesDraw[i], (GLfloat[4]) {0.3, 0.0, 0.0, 0.5});
+		}
 	}
 
 	while(!bov_window_should_close(window)){
-		bov_points_set_width(pointsDraw, 0.003);
-		bov_points_set_outline_width(pointsDraw, 0.002);
-		if (delTri->success) {
-			// bov_line_loop_draw(window, coordDraw, 0, nPoints);
+		if (success) {
+			for(GLsizei i = 0; i < n_triangles; i++) {
+				bov_line_loop_draw(window, trianglesDraw[i], 0, BOV_TILL_END);
+				bov_triangle_fan_draw(window, trianglesDraw[i], 0, BOV_TILL_END);
+			}
 		}
-		// points_set_width(coordDraw, 0.003);
-		bov_points_set_outline_width(pointsDraw, -1.);
-		bov_points_draw(window, pointsDraw, 0, delTri->n_points);
-		bov_window_screenshot(window, "test.ppm");
+
+		bov_points_draw(window, pointsDraw, 0, n_points);
+		//bov_window_screenshot(window, "test.ppm");
 		bov_window_update(window);
 	}
 
-	if (delTri->success) {
-		bov_points_delete(linesDraw);
+	if (success) {
+		for(GLsizei i = 0; i < n_triangles; i++) {
+			bov_points_delete(trianglesDraw[i]);
+		}
+		free(trianglesDraw);
 	}
 	bov_points_delete(pointsDraw);
 }

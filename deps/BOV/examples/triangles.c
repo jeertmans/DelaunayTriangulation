@@ -100,6 +100,7 @@ int main(int argc, char* argv[])
 		bov_text_set_pos(label_with_order[i], (GLfloat[2]) {-1.0 + 23 * 0.025, 0.9});
 	}
 
+	/*
 	GLfloat coord[][2] = {
 		{0, 0},
 		{1, 0},
@@ -115,17 +116,28 @@ int main(int argc, char* argv[])
 		{0.49999905662409616, -0.8660259484420856},
 		{0.6*0.86602480465984, -0.6*0.5000010377128091},
 		{1, 0},
+	};*/
+	GLfloat coord[][2] = {
+		{0, 0},
+		{1, 0},
+		{0.5, 0.5},
+		{2, 2},
+		{4, 4},
+		{6, 2}
 	};
 
-	bov_points_t* pointset = bov_points_new(coord, 14, GL_STATIC_DRAW);
+	//bov_points_t* pointset = bov_points_new(coord, 14, GL_STATIC_DRAW);
+	bov_points_t* pointset = bov_points_new(coord, 6, GL_STATIC_DRAW);
 	bov_points_set_color(pointset, (float[4]) {0.05, 0.1, 0.2, 0.6});
 	bov_points_set_outline_width(pointset, 0.025);
 	bov_points_set_width(pointset, 0.0);
 	bov_points_set_outline_color(pointset, (GLfloat[4]) {0.3, 0.0, 0.0, 0.5});
 
+	/*
 	bov_order_t* order = bov_order_new((GLuint[14]) {0, 2, 4, 6, 8, 14, 12, 1, 3, 5, 7, 9, 11, 13},
 	                                    10,
-	                                    GL_STATIC_DRAW);
+	                                    GL_STATIC_DRAW);*/
+	bov_order_t* order = bov_order_new((GLuint[6]) {0, 1, 2, 3, 4, 5}, 6, GL_STATIC_DRAW);
 
 	unsigned long frameCount = 0;
 	while(!bov_window_should_close(window)) {
