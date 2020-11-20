@@ -159,7 +159,7 @@ GLfloat coord[][2] = {
 	while(!bov_window_should_close(window)){
 		bov_points_set_width(coordDraw, 0.003);
 		bov_points_set_outline_width(coordDraw, 0.002);
-		bov_line_loop_draw(window, coordDraw, 0, nPoints);
+
 
 		// points_set_width(coordDraw, 0.003);
 		bov_points_set_outline_width(coordDraw, -1.);
