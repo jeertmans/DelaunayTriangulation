@@ -21,18 +21,10 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
     delTri->n_points = n;
     delTri->points = points;
 
-	// Centers and radii
-    delTri->n_centers = 0;
-    delTri->success = 0;
-
-	// Triangles
-	GLsizei n_triangles_max = n % 3 > 0 ? n / 3 : (n / 3) + 1;
-	delTri->n_triangles = 0;
-	delTri->triangles = malloc(sizeof(delTri->triangles[0]) * n_triangles_max);
-
 	// (Half) Edges
 	GLsizei n_edges_max = 3 * n;
 	delTri->n_edges = 0;
+	delTri->n_edges_discarded = 0;
 	delTri->edges = malloc(sizeof(Edge *) * n_edges_max);
 
 	return delTri;
@@ -69,15 +61,12 @@ void freeDelaunayTriangulation(DelaunayTriangulation *delTri) {
  * orig: 		the index of the origin point of the edge
  * dest: 		the index of the destination point of the edge
  * e:			an Edge structure pointer to the main edge
- *
- * returns:		the index of the main edge in the triangulation
  */
-GLsizei addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest,
-				Edge *e) {
+void addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest,
+			 Edge *e) {
 	// Main edge
 	e = delTri->edges[delTri->n_edges];
 	e->idx = delTri->n_edges;
-	GLsizei i_e = delTri->n_edges;
 	delTri->n_edges += 1;
 
 	e->discarded = 0;
@@ -95,29 +84,25 @@ GLsizei addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest,
 
 	// Bind the two edges together
 	e->sym = s;
-	q->sym = e;
+	s->sym = e;
 
 	e->onext = e;
 	e->oprev = e;
 	s->onext = s;
 	s->oprev = s;
-
-	return i_e;
 }
 
 /*
  * Combines two distinct edges.
  *
  * delTri: 		the DelaunayTriangulation structure
- * i_a: 		the index of the first edge
- * i_b: 		the index of the second edge
+ * a:	 		the first edge
+ * b: 			the second edge
  */
-void spliceEdges(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b) {
-	if (i_a == i_b) {
+void spliceEdges(DelaunayTriangulation *delTri, Edge *a, Edge *b) {
+	if (a == b) {
 		return;
 	}
-	Edge *a = delTri->edges[i_a];
-	Edge *b = delTri->edges[i_a];
 
 	Edge *tmp;
 	a->onext->oprev = b;
@@ -133,22 +118,15 @@ void spliceEdges(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b) {
  * of the second edge
  *
  * delTri: 		the DelaunayTriangulation structure
- * i_a: 		the index of the first edge
- * i_b: 		the index of the second edge
+ * a: 			the first edge
+ * b: 			the second edge
  * e:			an Edge structure pointer to the new edge
- *
- * returns:		the index of the new edge
  */
-GLsizei connectEdges(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b,
-					 Edge *e) {
+void connectEdges(DelaunayTriangulation *delTri, Edge *a, Edge *b, Edge *e) {
 
-	Edge *a = delTri->edges[i_a];
-
-	GLsizei i_e = addEdge(delTri, a->dest, b->orig, e);
-	splice(delTri, e->idx, a->sym->oprev);
-	splice(delTri, e->sym, i_b)
-
-	return i_e;
+	addEdge(delTri, a->dest, b->orig, e);
+	splice(delTri, e, a->sym->oprev);
+	splice(delTri, e->sym, b);
 }
 
 /*
@@ -156,16 +134,16 @@ GLsizei connectEdges(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b,
  * symetrical edge.
  *
  * delTri: 		the DelaunayTriangulation structure
- * i_e: 		the index of the edge
+ * e: 			the edge
  */
-void deleteEdge(DelaunayTriangulation *delTri, GLsizei i_e) {
-	Edge *e = delTri->edges[i_e];
-	spliceEdges(delTri, i_e, e.oprev);
-	spliceEdges(delTri, e->sym, e->sym.oprev);
+void deleteEdge(DelaunayTriangulation *delTri, e) {
+	spliceEdges(delTri, e, e->oprev);
+	spliceEdges(delTri, e->sym, e->sym->oprev);
 
-	// Discard the edge from the data structure
+	// Discard the edges from the data structure
 	e->discarded = 1;
-	delTri->edges[e->sym]->discarded = 1;
+	e->sym->discarded = 1;
+	delTri->n_edges_discarded += 2;
 }
 
 ///////////////////////////////
@@ -273,72 +251,75 @@ int pointLeftOfEdge(GLfloat point[2], GLfloat orig[2], GLfloat dest[2]) {
 // Begin: Triangulation functions //
 ////////////////////////////////////
 
+/*
+ * Triangulates a set of points using the DelaunayTriangulation.
+ * This function should be the main function which will all the other sub-functions.
+ *
+ * delTri: 		the DelaunayTriangulation structure
+ */
 void triangulateDT(DelaunayTriangulation *delTri) {
 	// Sort points by x coordinates then by y coordinate.
 	qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
 
 	/// Starts the triangulation using a divide and conquer approach.
 	triangulate(delTri, 0, delTri->n_points, (Edge *) NULL, (Edge *) NULL);
+	delTri->success = 1;
 }
 
 /*
+ * Recursive function used by the triangulateDT function in order to solve
+ * the triangulation problem using a divide and conquer approach.
+ *
+ * delTri: 		the DelaunayTriangulation structure
+ * start:		the start index of the slice
+ * end:			the (excluded) end index of the slice
+ * el:			an Edge structure pointer for the left edge
+ * er:			an Edge structure pointer for the right edge
  *
  */
 void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge *el, Edge *er) {
 	GLsizei n = end - start;
 	if (n == 2) {
-		// a = make_edge(S[0], S[1])
-		// return a, a.sym
+		// Creates an edge connecting the two points (start), (start + 1)
 		addEdge(delTri, start, start + 1 , el);
 		er = el->sym;
 		return;
 	}
 	else if (n == 3) {
-		/*
-		# Create edges a connecting p1 to p2 and b connecting p2 to p3.
-        p1, p2, p3 = S[0], S[1], S[2]
-        a = make_edge(p1, p2)
-        b = make_edge(p2, p3)
-        splice(a.sym, b)
+		Edge *a, *b, *c;
 
-        # Close the triangle.
-        if right_of(p3, a):
-            connect(b, a)
-            return a, b.sym
-        elif left_of(p3, a):
-            c = connect(b, a)
-            return c.sym, c
-        else:  # the three points are collinear
-            return a, b.sym
-		*/
-        Edge *a, *b, *c;
-		GLsizei i_a, i_b;
-
-		i_a = addEdge(delTri, start, start + 1, a);
-		i_b = addEdge(delTri, start + 1, start + 2, b);
-		spliceEdges(delTri, a->sym, i_b);
+		// Creates two edges
+		// - a, connecting (start), 	(start + 1)
+		// - b, connecting (start + 1), (start + 2)
+		addEdge(delTri, start, 		start + 1, a);
+		addEdge(delTri, start + 1, 	start + 2, b);
+		spliceEdges(delTri, a->sym, b);
 
 		GLfloat point[2], orig[2], dest[2];
 
+		// Point (start + 2)
 		point = delTri->points[start + 2];
+
+		// Points coordinates of (start)
 		orig = delTri->points[a->orig];
 		dest = delTri->points[a->dest];
 
+		// Now will close the triangle formed by the three points
 		if (pointRightOfEdge(point, orig, dest)) {
-			connectEdges(delTri, i_b, i_a, (Edge *) NULL);
+			connectEdges(delTri, b, a, c);
 			el = a;
-			er = delTri->edges[b->sym];
+			er = b->sym;
 			return;
 		}
 		else if (pointLeftOfEdge(point, orig, dest)) {
-			connectEdges(delTri, i_b, i_a, c);
-			el = delTri->edges[c->sym];
+			connectEdges(delTri, b, a, c);
+			el = c->sym;
 			er = c;
 			return;
 		}
 		else {
 			el = a;
-			er = delTri->edges[b->sym];
+			er = b->sym;
 			return;
 		}
 	}

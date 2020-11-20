@@ -7,8 +7,8 @@
 
 typedef struct Edge {
     GLsizei orig, dest;     // indices of origin and destinations points
-    GLsizei onext, oprev;   // indices of next and previous edge
-    GLsizei sym;            // index of opposite edge
+    Edge *onext, *oprev;    // next and previous edges
+    Edge *sym;              // opposite edge
 
     GLsizei idx;            // index of the edge
 
@@ -16,10 +16,6 @@ typedef struct Edge {
 } Edges;
 
 typedef struct DelaunayTriangulation {
-    // Allocating
-    GLsizei n_centers;
-    GLfloat (*centers)[2];
-
     // Success will be == 1 if triang. has been completed
     int success;
 
@@ -27,12 +23,8 @@ typedef struct DelaunayTriangulation {
     GLsizei n_points;
     GLfloat (*points)[2];
 
-    // Triangles index
-    GLsizei n_triangles;
-    GLsizei (*triangles)[3];
-
     // Edges
-    GLsizei n_edges;
+    GLsizei n_edges, n_edges_discarded;
     Edges *edges;
 
 } DelaunayTriangulation;
@@ -40,10 +32,10 @@ typedef struct DelaunayTriangulation {
 DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n);
 void freeDelaunayTriangulation(DelaunayTriangulation *delTri);
 
-GLsizei addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest, Edge *e);
-void spliceEdges(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b);
-GLsizei connectEdges(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, Edge *e);
-void deleteEdge(DelaunayTriangulation *delTri, GLsizei i_e);
+void addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest, Edge *e);
+void spliceEdges(DelaunayTriangulation *delTri, Edge *a, Edge *b);
+void connectEdges(DelaunayTriangulation *delTri, Edge *a, Edge *b, Edge *e);
+void deleteEdge(DelaunayTriangulation *delTri, Edge *e);
 
 static int compare_points(const void *a_v, const void *b_v);
 int pointInCircleFast(GLfloat point[2], GLfloat center[2], GLfloat radius);
