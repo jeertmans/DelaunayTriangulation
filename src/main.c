@@ -117,10 +117,11 @@ int main(int argc, char *argv[])
 	//glDisable(GL_CULL_FACE);
 	bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
 
-#if 0 // put 1 for random polygon
+#if 1 // put 1 for random polygon
 const GLsizei nPoints = (GLsizei) options.p;
 GLfloat (*coord)[2] = malloc(sizeof(coord[0])*nPoints);
-	random_polygon(coord, nPoints, options.n);
+random_points(coord, nPoints);
+	//random_polygon(coord, nPoints, options.n);
 #else
 const GLsizei nPoints = 6;
 GLfloat coord[][2] = {
@@ -133,24 +134,26 @@ GLfloat coord[][2] = {
 };
 	//random_points(coord, nPoints);
 #endif
-
+#if 1
 	if (options.v) printf("BEGIN\n");
 
-	DelaunayTriangulation *delTri = initDelaunayTriangulation(coord, nPoints);
+	DelaunayTriangulation *delTri;
+	delTri = initDelaunayTriangulation(coord, nPoints);
+	triangulateDT(delTri);
 
-	GLsizei ntri = nPoints / 3;
+	if (options.v) describeDelaunayTriangulation(delTri);
 
-	for (GLsizei i = 0; i < ntri; i++) {
-		delTri->triangles[i][0] = 3 * i;
-		delTri->triangles[i][1] = 3 * i + 1;
-		delTri->triangles[i][2] = 3 * i + 2;
-	}
-
-	delTri->n_triangles = ntri;
+	if (options.v) printf("DONE, will draw\n");
 
 	drawDelaunayTriangulation(delTri, window);
 
 	if (options.v) printf("END\n");
+
+	if (options.v) describeDelaunayTriangulation(delTri);
+
+	freeDelaunayTriangulation(delTri);
+	printf("Freed the DelaunayTriangulation\n");
+#else
 
 	bov_points_t *coordDraw = bov_points_new(coord, nPoints, GL_STATIC_DRAW);
 	bov_points_set_color(coordDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
@@ -170,6 +173,7 @@ GLfloat coord[][2] = {
 
 	bov_points_delete(coordDraw);
 	//free(coord);
+#endif
 	bov_window_delete(window);
 
 	return EXIT_SUCCESS;
