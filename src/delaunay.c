@@ -673,6 +673,17 @@ void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]) {
 
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window) {
 
+	bov_text_t* text = bov_text_new(
+		(GLubyte[]) {"This plot is interactive!\n"
+		             "Press/hold [A/D/S] to [ADD/DELETE/SELECT] a point nearby your cursor.\n"
+		             "Press [F] to switch between fast and pretty drawing."},
+		GL_STATIC_DRAW);
+	bov_text_set_space_type(text, PIXEL_SPACE);
+	bov_text_param_t text_parameters = bov_text_get_param(text);
+	text_parameters.fontSize *= 0.5;
+	text_parameters.pos[1] = 40.0;
+	bov_text_set_param(text, text_parameters);
+
 	GLfloat defaultPointWidth;
 	GLfloat updatedPointWidth;
 
@@ -814,6 +825,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		}
 		//printf("UPDATE\n");
 		//bov_window_screenshot(window, "test.ppm");
+		bov_text_draw(window, text);
 		bov_window_update(window);
 	}
 
