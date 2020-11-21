@@ -20,6 +20,7 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
     // Points
     delTri->n_points = n;
     delTri->points = malloc(sizeof(delTri->points[0]) * n);
+	printf("points: %p\n", delTri->points);
 
 	for (GLsizei i = 0; i < n; i++) {
 		delTri->points[i][0] = points[i][0];
@@ -43,11 +44,13 @@ void resetDelaunayTriangulation(DelaunayTriangulation *delTri) {
 	delTri->n_edges_discarded = 0;
 	delTri->edges = malloc(sizeof(Edge) * delTri->n_edges_max);
 
-	if (delTri->edges == NULL) {
+	if ((delTri->edges == NULL) && (delTri->n_points > 1)) {
 		printf("Could't allocate memory for edges\n");
 		free(delTri);
 		return;
 	}
+
+	printf("RESET done\n");
 
 	delTri->success = 0;
 }
@@ -96,19 +99,26 @@ void updatePointAtIndex(DelaunayTriangulation *delTri, GLsizei i_p, GLfloat poin
 }
 
 int addPoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
-
 	if (getDistanceToClosestPoint(delTri, point) <= 1e-10) {
 		return 0;
 	}
+	printf("ADD\n");
 
 	GLsizei idx = delTri->n_points;
 	delTri->n_points += 1;
 
-	GLfloat (*points)[2] = realloc(delTri->points, sizeof(delTri->points[0]) * delTri->n_points);
+	GLfloat (*points)[2];
+	if (delTri->points == NULL) {
+		printf("NO POINT\n");
+		delTri->points = malloc(sizeof(delTri->points[0]) * delTri->n_points);
+	}
+	points = realloc(delTri->points, sizeof(delTri->points[0]) * delTri->n_points);
 	// Should assert(points);
 	delTri->points = points;
 	delTri->points[idx][0] = point[0];
 	delTri->points[idx][1] = point[1];
+
+	printf("DONE adding\n");
 	resetDelaunayTriangulation(delTri);
 	return 1;
 }
@@ -247,15 +257,6 @@ Edge* addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest) {
 	if (delTri->n_edges_max <= delTri->n_edges) {
 		printf("ERROR, no enough edges allocated\n");
 		exit(1);
-		/*
-		delTri->n_edges_max *= 2;
-		Edge *edges = realloc(delTri->edges, sizeof(Edge) * delTri->n_edges_max);
-		if (!edges) {
-			printf("Error while realloacting the edge: trying to double the size to %d\n", delTri->n_edges_max);
-		}
-		else {
-			delTri->edges = edges;
-		}*/
 	}
 
 	// Main edge
@@ -507,6 +508,9 @@ void triangulateDT(DelaunayTriangulation *delTri) {
 	if (delTri->success) {
 		return;
 	}
+	if (delTri->n_points < 2) {
+		return;
+	}
 
 	// Sort points by x coordinates then by y coordinate.
 	qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
@@ -681,9 +685,15 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	bov_points_set_width(pointsDraw, defaultPointWidth);
 	//bov_points_set_outline_width(pointsDraw, 0.1);
 
-	bov_points_t *linesDraw = NULL;
-	GLfloat (*linesPoints)[2];
+
 	GLsizei n_lines;
+	GLfloat (*linesPoints)[2] = NULL;
+	bov_points_t *linesDraw = bov_points_new(linesPoints, 0, GL_STATIC_DRAW);
+	bov_points_update(linesDraw, linesPoints, 2 * n_lines);
+	bov_points_set_color(linesDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
+	bov_points_set_width(linesDraw, 0.004);
+	bov_points_set_outline_color(linesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
+	bov_points_set_outline_width(linesDraw, .002);
 
 	/*
 	for(int i = 0; i < n_points; i++) {
@@ -691,7 +701,6 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	}*/
 
 	if (delTri->success) {
-		printf("SUCCESS\n");
 		n_lines = getDelaunayTriangulationNumberOfLines(delTri);
 		linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
 		getDelaunayTriangulationLines(delTri, linesPoints, n_lines);
@@ -699,12 +708,6 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		for(GLsizei i =0; i<2*n_lines; i++) {
 			//printf("lines[%d]=(%.4f, %.4f)\n", i, linesPoints[i][0], linesPoints[i][1]);
 		}
-
-		linesDraw = bov_points_new(linesPoints, 2 * n_lines, GL_STATIC_DRAW);
-		bov_points_set_color(linesDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
-		bov_points_set_width(linesDraw, 0.004);
-		bov_points_set_outline_color(linesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
-		bov_points_set_outline_width(linesDraw, .002);
 	}
 
 	int FAST = (delTri->n_points > 100);
@@ -772,12 +775,14 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		}
 		if (REQUIRE_UPDATE) {
 			triangulateDT(delTri);
-			bov_points_update(pointsDraw, delTri->points, delTri->n_points);
-			free(linesPoints);
-			n_lines = getDelaunayTriangulationNumberOfLines(delTri);
-			linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
-			getDelaunayTriangulationLines(delTri, linesPoints, n_lines);
-			bov_points_update(linesDraw, linesPoints, 2 * n_lines);
+			if (delTri->success) {
+				bov_points_update(pointsDraw, delTri->points, delTri->n_points);
+				if (linesPoints != NULL) free(linesPoints);
+				n_lines = getDelaunayTriangulationNumberOfLines(delTri);
+				linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
+				getDelaunayTriangulationLines(delTri, linesPoints, n_lines);
+				bov_points_update(linesDraw, linesPoints, 2 * n_lines);
+			}
 
 			bov_points_update(mouseDraw, mousePoint, 1);
 			bov_points_set_color(mouseDraw, (GLfloat[4]) {1.0, 0.0, 0.0, 1.0});

@@ -8,7 +8,7 @@
 #include <string.h>
 #include <getopt.h>
 
-#define OPTSTR "vi:p:n:h"
+#define OPTSTR "vi:i:o:n:p:s:a:b:h"
 #define USAGE_FMT  "%s \
 [-v verbose] \
 [-i input_file] \
@@ -52,6 +52,8 @@ int main(int argc, char *argv[])
 		500,		// Number of points
 		4,			// Smoothing factor
 		"normal",	// Random process
+		1.0,		// By default, will generate points
+		1.0,		// in a perfect square (or circle)
 	};
 
 	// Inspired from:
@@ -92,6 +94,13 @@ int main(int argc, char *argv[])
 				break;
 			case 'o':
 				options.o = optarg;
+				break;
+			case 'a':
+				options.a = strtod(optarg, NULL);
+				break;
+			case 'b':
+				options.b = strtod(optarg, NULL);
+				break;
 			case 'v':
 				options.v = 1;
 				break;
@@ -134,12 +143,12 @@ int main(int argc, char *argv[])
 	}
 	else if (strcmp(options.p, "uniform") == 0) {
 		GLfloat min[2] = {0.0, 0.0};
-		GLfloat max[2] = {1.0, 1.0};
+		GLfloat max[2] = {options.a, options.b};
 		random_uniform_points(coord, nPoints, min, max);
 	}
 	else if (strcmp(options.p, "uniform-circle") == 0) {
 		GLfloat min[2] = {0.0, 0.0};
-		GLfloat max[2] = {1.0, 1.0};
+		GLfloat max[2] = {options.a, options.b};
 		random_uniform_points_in_circle(coord, nPoints, min, max);
 	}
 	else if (strcmp(options.p, "polygon") == 0) {
