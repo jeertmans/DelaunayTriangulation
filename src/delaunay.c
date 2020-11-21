@@ -19,10 +19,26 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
 
     // Points
     delTri->n_points = n;
-    delTri->points = points;
+    delTri->points = malloc(sizeof(delTri->points[0]) * n);
+
+	for (GLsizei i = 0; i < n; i++) {
+		delTri->points[i][0] = points[i][0];
+		delTri->points[i][1] = points[i][1];
+	}
+
+	delTri->edges = NULL;
+	resetDelaunayTriangulation(delTri);
+
+	return delTri;
+}
+
+void resetDelaunayTriangulation(DelaunayTriangulation *delTri) {
+	if (delTri->edges != NULL) {
+		free(delTri->edges);
+	}
 
 	// (Half) Edges
-	delTri->n_edges_max = (GLsizei) ceil((log(n) * 3 * n));
+	delTri->n_edges_max = (GLsizei) ceil((log(delTri->n_points) * 3 * delTri->n_points));
 	delTri->n_edges = 0;
 	delTri->n_edges_discarded = 0;
 	delTri->edges = malloc(sizeof(Edge) * delTri->n_edges_max);
@@ -30,12 +46,105 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
 	if (delTri->edges == NULL) {
 		printf("Could't allocate memory for edges\n");
 		free(delTri);
-		return NULL;
+		return;
 	}
 
 	delTri->success = 0;
+}
 
-	return delTri;
+GLsizei getPointIndex(DelaunayTriangulation *delTri, GLfloat point[2]) {
+	if (delTri->n_points == 0) {
+		return -1;
+	}
+
+	GLsizei i;
+	GLsizei closest_idx = 0;
+	GLfloat dx, dy, dist;
+	dx = point[0] - delTri->points[0][0];
+	dy = point[1] - delTri->points[0][1];
+	GLfloat closest_dist = dx * dx + dy * dy;
+
+	for (i = 1; i < delTri->n_points; i++) {
+		dx = point[0] - delTri->points[i][0];
+		dy = point[1] - delTri->points[i][1];
+		dist = (dx*dx) + dy*dy;
+		if (dist < closest_dist) {
+			closest_idx = i;
+			closest_dist = dist;
+		}
+	}
+	return closest_idx;
+}
+
+GLfloat getDistanceToClosestPoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
+	GLsizei idx = getPointIndex(delTri, point);
+	if (idx != -1) {
+		GLfloat dx, dy;
+		dx = point[0] - delTri->points[idx][0];
+		dy = point[1] - delTri->points[idx][1];
+		return dx * dx + dy * dy;
+	}
+	else {
+		return INFINITY;
+	}
+}
+
+void updatePointAtIndex(DelaunayTriangulation *delTri, GLsizei i_p, GLfloat point[2]) {
+	delTri->points[i_p][0] = point[0];
+	delTri->points[i_p][1] = point[1];
+	resetDelaunayTriangulation(delTri);
+}
+
+int addPoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
+
+	if (getDistanceToClosestPoint(delTri, point) <= 1e-10) {
+		return 0;
+	}
+
+	GLsizei idx = delTri->n_points;
+	delTri->n_points += 1;
+
+	GLfloat (*points)[2] = realloc(delTri->points, sizeof(delTri->points[0]) * delTri->n_points);
+	// Should assert(points);
+	delTri->points = points;
+	delTri->points[idx][0] = point[0];
+	delTri->points[idx][1] = point[1];
+	resetDelaunayTriangulation(delTri);
+	return 1;
+}
+
+int deletePointAtIndex(DelaunayTriangulation *delTri, GLsizei i_p) {
+	if (delTri->n_points == 0) {
+		return 0;
+	}
+
+	delTri->n_points -= 1;
+	GLfloat (*points)[2] = malloc(sizeof(delTri->points[0]) * delTri->n_points);
+
+	for (GLsizei i = 0; i < i_p; i++) {
+		points[i][0] = delTri->points[i][0];
+		points[i][1] = delTri->points[i][1];
+	}
+	for (GLsizei i = i_p; i < delTri->n_points; i++) {
+		points[i][0] = delTri->points[i + 1][0];
+		points[i][1] = delTri->points[i + 1][1];
+	}
+
+	free(delTri->points);
+	delTri->points = points;
+
+	resetDelaunayTriangulation(delTri);
+	return 1;
+}
+
+int deletePoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
+	GLsizei idx = getPointIndex(delTri, point);
+	if (idx != -1) {
+		return deletePointAtIndex(delTri, idx);
+	}
+	else {
+		return 0;
+	}
 }
 
 /*
@@ -46,13 +155,17 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
  */
 void freeDelaunayTriangulation(DelaunayTriangulation *delTri) {
 	if (delTri != NULL) {
+		if (delTri->points != NULL) free(delTri->points);
 		if (delTri->edges != NULL) free(delTri->edges);
-		printf("ICI\n");
 		free(delTri);
-		printf("FREE DONE\n");
 	}
 }
 
+/*
+ * Describes a DelaunayTriangulation structure by printing some information.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ */
 void describeDelaunayTriangulation(DelaunayTriangulation *delTri) {
 
 	printf("DelaunayTriangulation structure stored at %p.\n"
@@ -69,15 +182,29 @@ void describeDelaunayTriangulation(DelaunayTriangulation *delTri) {
 	   	   delTri->success);
 }
 
+/*
+ * Returns the total number of lines (edges) in the DelaunayTriangulation,
+ * excluding the discarded edges.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ *
+ * returns:		the number of lines
+ */
 GLsizei getDelaunayTriangulationNumberOfLines(DelaunayTriangulation *delTri) {
 	return (delTri->n_edges - delTri->n_edges_discarded) / 2;
 }
 
+/*
+ * Populates an array of 2 * n_lines points with the points of all the edges
+ * in the DelaunayTriangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * lines:		the preallocated array that will contain the points
+ * n_lines:		the number of lines
+ */
 void getDelaunayTriangulationLines(DelaunayTriangulation *delTri,
 								   GLfloat lines[][2],
 							   	   GLsizei n_lines) {
-
-	printf("Generating triangulation lines\n");
 
 	GLsizei e_i, l_i;
 	Edge *e;
@@ -92,7 +219,6 @@ void getDelaunayTriangulationLines(DelaunayTriangulation *delTri,
 			l_i+=2;
 		}
 	}
-	printf("Generated triangulation lines\n");
 }
 
 ////////////////////////////////////////////////
@@ -163,6 +289,11 @@ Edge* addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest) {
 	return e;
 }
 
+/*
+ * Describes an Edge structure by printing some information.
+ *
+ * e:			the Edge structure
+ */
 void describeEdge(Edge *e) {
 
 	printf("Edge structure stored at %p.\n"
@@ -373,6 +504,10 @@ int pointCompareEdge(DelaunayTriangulation *delTri, GLsizei i_p, Edge *e) {
  * delTri: 		the DelaunayTriangulation structure
  */
 void triangulateDT(DelaunayTriangulation *delTri) {
+	if (delTri->success) {
+		return;
+	}
+
 	// Sort points by x coordinates then by y coordinate.
 	qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
 
@@ -527,57 +662,25 @@ void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge
 // Begin: Drawing functions //
 //////////////////////////////
 
+void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]) {
+	mouse_pos[0] = (window->cursorPos[0] - window->param.translate[0]);
+	mouse_pos[1] = (window->cursorPos[1] - window->param.translate[1]);
+}
+
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window) {
-#if 0
-	GLfloat coord[][2] = {
-		{-1.0,  0.0},
-		{-0.8, -0.6},
-		{-0.7,  0.6},
-		{-0.5,  0.0},
-		{-0.2, -0.4},
-		{ 0.0,  0.8},
-		{ 0.3,  0.0},
-		{ 0.5, -0.6},
-		{ 0.7,  0.6},
-		{ 0.0, -0.9},
-	};
-	GLsizei nPoints = 10;
-	bov_points_t *coordDraw = bov_points_new(coord, nPoints, GL_STATIC_DRAW);
-	bov_points_set_color(coordDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
-	bov_points_set_outline_color(coordDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
 
-	while(!bov_window_should_close(window)){
-		bov_points_set_width(coordDraw, 0.003);
-		bov_points_set_outline_width(coordDraw, 0.002);
+	GLfloat defaultPointWidth;
+	GLfloat updatedPointWidth;
 
+	defaultPointWidth = 0.01;
+	updatedPointWidth = 0.04;
 
-		// points_set_width(coordDraw, 0.003);
-		bov_points_set_outline_width(coordDraw, -1.);
-		printf("LA\n");
-		bov_points_draw(window, coordDraw, 0, nPoints);
-		printf("ICI je suis\n");
-
-		bov_window_update(window);
-	}
-
-	bov_points_delete(coordDraw);
-#else
-	// Shorten variables
-	GLfloat (*points)[2] = delTri->points;
-	GLsizei n_points = delTri->n_points;
-
-	int success = delTri->success;
-	//
-
-    bov_points_t *pointsDraw = bov_points_new(points, n_points, GL_STATIC_DRAW);
+    bov_points_t *pointsDraw = bov_points_new(delTri->points, delTri->n_points, GL_STATIC_DRAW);
 	bov_points_set_color(pointsDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
 	bov_points_set_outline_color(pointsDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
+	bov_points_set_width(pointsDraw, defaultPointWidth);
+	//bov_points_set_outline_width(pointsDraw, 0.1);
 
-	bov_points_set_width(pointsDraw, 0.01);
-	bov_points_set_outline_width(pointsDraw, 0.002);
-
-	// points_set_width(coordDraw, 0.003);
-	bov_points_set_outline_width(pointsDraw, -1.);
 	bov_points_t *linesDraw = NULL;
 	GLfloat (*linesPoints)[2];
 	GLsizei n_lines;
@@ -587,9 +690,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		printf("(%.4f, %.4f)\n", points[i][0], points[i][1]);
 	}*/
 
-	success = 1;
-
-	if (success) {
+	if (delTri->success) {
 		printf("SUCCESS\n");
 		n_lines = getDelaunayTriangulationNumberOfLines(delTri);
 		linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
@@ -600,21 +701,122 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		}
 
 		linesDraw = bov_points_new(linesPoints, 2 * n_lines, GL_STATIC_DRAW);
-		bov_points_set_width(linesDraw, 0.005);
+		bov_points_set_color(linesDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
+		bov_points_set_width(linesDraw, 0.004);
+		bov_points_set_outline_color(linesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
+		bov_points_set_outline_width(linesDraw, .002);
 	}
 
+	int FAST = (delTri->n_points > 100);
+	int REQUIRE_UPDATE = 0;
+	int KEY_A, KEY_D, KEY_S, KEY_F;
+	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F;
+	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = 0;
+
+	int idx = -1;
+	GLfloat mousePoint[][2] = {{0.0, 0.0}};
+
+
+	bov_points_t *mouseDraw = bov_points_new(mousePoint, 1, GL_STATIC_DRAW);
+	bov_points_set_color(mouseDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 0.0});
+	bov_points_set_outline_color(mouseDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
+	bov_points_set_width(mouseDraw, defaultPointWidth);
+	bov_points_set_outline_width(mouseDraw, -.1);
+
 	while(!bov_window_should_close(window)){
-		if (success) {
-			//bov_fa
-			bov_fast_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+		getMousePosition(window, mousePoint[0]);
+
+		// printf("(x, y) = (%.4f, %.4f)\n", window->cursorPos[0], window->cursorPos[1]);
+		KEY_A = glfwGetKey(window->self, GLFW_KEY_Q); // QWERTY layout
+		KEY_D = glfwGetKey(window->self, GLFW_KEY_D);
+		KEY_S = glfwGetKey(window->self, GLFW_KEY_S);
+		KEY_F = glfwGetKey(window->self, GLFW_KEY_F);
+
+		//printf("Mouse at (%.4f, %.4f)\n", mouse_pos[0], mouse_pos[1]);
+		//printf("Param: res(%.4f, %4f), translate(%.4f, %4f), zoom(%.4f)\n", window->param.res[0], window->param.res[1], window->param.translate[0], window->param.translate[1], window->param.zoom);
+
+		if (KEY_A) {
+			if (!LAST_KEY_A) {
+				REQUIRE_UPDATE = addPoint(delTri, mousePoint[0]);
+				LAST_KEY_A = KEY_A;
+			}
 		}
-		bov_fast_points_draw(window, pointsDraw, 0, n_points);
+		else {
+			LAST_KEY_A = KEY_A;
+		}
+		if (KEY_D) {
+			if (!LAST_KEY_D) {
+				REQUIRE_UPDATE = deletePoint(delTri, mousePoint[0]);
+				LAST_KEY_D = KEY_D;
+			}
+		}
+		else {
+			LAST_KEY_D = KEY_D;
+		}
+		if (KEY_S) {
+			idx = getPointIndex(delTri, mousePoint[0]);
+			updatePointAtIndex(delTri, idx, mousePoint[0]);
+			REQUIRE_UPDATE = 1;
+		}
+		else {
+			idx = -1;
+		}
+		if (KEY_F) {
+			if (!LAST_KEY_F) {
+				FAST = !FAST;
+				LAST_KEY_F = KEY_F;
+			}
+		}
+		else {
+			LAST_KEY_F = KEY_F;
+		}
+		if (REQUIRE_UPDATE) {
+			triangulateDT(delTri);
+			bov_points_update(pointsDraw, delTri->points, delTri->n_points);
+			free(linesPoints);
+			n_lines = getDelaunayTriangulationNumberOfLines(delTri);
+			linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
+			getDelaunayTriangulationLines(delTri, linesPoints, n_lines);
+			bov_points_update(linesDraw, linesPoints, 2 * n_lines);
+
+			bov_points_update(mouseDraw, mousePoint, 1);
+			bov_points_set_color(mouseDraw, (GLfloat[4]) {1.0, 0.0, 0.0, 1.0});
+			bov_points_set_width(mouseDraw, updatedPointWidth);
+			REQUIRE_UPDATE = 0;
+		}
+		else {
+			bov_points_param_t param = bov_points_get_param(mouseDraw);
+			param.fillColor[3] *= 0.95;
+			param.width -= (param.width - defaultPointWidth) / 10;
+			bov_points_set_param(mouseDraw, param);
+		}
+		//printf("A=%d, D=%d, S=%d\n", KEY_A, KEY_D, KEY_S);
+		if (delTri->success) {
+			if (FAST) {
+				bov_fast_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+			}
+			else {
+				bov_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+			}
+		}
+		if (FAST) {
+			bov_fast_points_draw(window, pointsDraw, 0, delTri->n_points);
+			bov_fast_points_draw(window, mouseDraw, 0, 1);
+		}
+		else {
+			bov_points_draw(window, pointsDraw, 0, delTri->n_points);
+			bov_points_draw(window, mouseDraw, 0, 1);
+		}
 		//printf("UPDATE\n");
 		//bov_window_screenshot(window, "test.ppm");
 		bov_window_update(window);
 	}
 
 	bov_points_delete(pointsDraw);
-	if (success) bov_points_delete(linesDraw);
-#endif
+	bov_points_delete(mouseDraw);
+
+	if (delTri->success) {
+		bov_points_delete(linesDraw);
+		free(linesPoints);
+	}
 }

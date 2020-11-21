@@ -13,8 +13,11 @@
 [-v verbose] \
 [-i input_file] \
 [-o output_file] \
-[-p number_of_points] \
-[-n smoothing_factor] \
+[-n number_of_points] \
+[-p random_process] \
+[-s smoothing_factor] \
+[-a range_x for random points]\
+[-b range_y for random points]\
 [-h]\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"
@@ -29,8 +32,11 @@ typedef struct options_t {
 	int v;
 	char *i;
 	char *o;
-	int p;
 	int n;
+	int s;
+	char *p;
+	double a;
+	double b;
 } options_t;
 
 
@@ -45,14 +51,38 @@ int main(int argc, char *argv[])
 		NULL,		// Output file
 		500,		// Number of points
 		4,			// Smoothing factor
+		"normal",	// Random process
 	};
 
 	// Inspired from:
 	// https://opensource.com/article/19/5/how-write-good-c-main-function
 	while ((opt = getopt(argc, argv, OPTSTR)) != EOF) {
 		switch(opt) {
-        	case 'p':
-				options.p = atoi(optarg);
+			case 'p':
+				if (strcmp(optarg, "normal") == 0) {
+					options.p = optarg;
+				}
+				else if (strcmp(optarg, "uniform") == 0) {
+					options.p = optarg;
+				}
+				else if (strcmp(optarg, "uniform-circle") == 0) {
+					options.p = optarg;
+				}
+				else if (strcmp(optarg, "polygon") == 0) {
+					options.p = optarg;
+				}
+				else {
+					printf("Unknown random process: %s\n"
+						   "please choose one among:\n"
+						   "\t- normal\n"
+						   "\t- uniform\n"
+						   "\t- uniform-circle\n"
+						   "\t- polygon\n",
+						   optarg);
+					exit(EXIT_FAILURE);
+				}
+        	case 's':
+				options.s = atoi(optarg);
               	break;
 			case 'n':
 				options.n = atoi(optarg);
@@ -78,33 +108,12 @@ int main(int argc, char *argv[])
 			printf("- Loading points from input file: %s\n", options.i);
 		}
 		else {
-			printf("- Generating %d random points with a smoothing factor of %d\n", options.p, options.n);
+			printf("- Generating %d random points with a %s random process\n", options.n, options.p);
 		}
 		if(options.o != NULL) {
 			printf("- Saving results to file: %s\n", options.o);
 		}
 	}
-
-	unsigned int n = (unsigned int) options.p;
-	/*
-
-	Point *points = newRandomPoints(n);
-
-	for(int i = 0; i < n; i++) {
-		printPoint(&points[i]);
-	}
-
-	printf("Sorted\n");
-
-	qsort(points, n, sizeof(Point), comparePoints);
-
-	for(int i = 0; i < n; i++) {
-		printPoint(&points[i]);
-	}
-
-	free(points);
-	*/
-
 	// give a bit of entropy for the seed of rand()
 	// or it will always be the same sequence
 	int seed = (int) time(NULL);
@@ -117,23 +126,25 @@ int main(int argc, char *argv[])
 	//glDisable(GL_CULL_FACE);
 	bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
 
-#if 1 // put 1 for random polygon
-const GLsizei nPoints = (GLsizei) options.p;
-GLfloat (*coord)[2] = malloc(sizeof(coord[0])*nPoints);
-random_points(coord, nPoints);
-	//random_polygon(coord, nPoints, options.n);
-#else
-const GLsizei nPoints = 6;
-GLfloat coord[][2] = {
-	{0, 0},
-	{1, 0},
-	{0.5, 0.5},
-	{2, 2},
-	{4, 2},
-	{3, 4}
-};
-	//random_points(coord, nPoints);
-#endif
+	const GLsizei nPoints = (GLsizei) options.n;
+	GLfloat (*coord)[2] = malloc(sizeof(coord[0]) * nPoints);
+
+	if (strcmp(options.p, "normal") == 0) {
+		random_points(coord, nPoints);
+	}
+	else if (strcmp(options.p, "uniform") == 0) {
+		GLfloat min[2] = {0.0, 0.0};
+		GLfloat max[2] = {1.0, 1.0};
+		random_uniform_points(coord, nPoints, min, max);
+	}
+	else if (strcmp(options.p, "uniform-circle") == 0) {
+		GLfloat min[2] = {0.0, 0.0};
+		GLfloat max[2] = {1.0, 1.0};
+		random_uniform_points_in_circle(coord, nPoints, min, max);
+	}
+	else if (strcmp(options.p, "polygon") == 0) {
+		random_polygon(coord, nPoints, options.s);
+	}
 #if 1
 	if (options.v) printf("BEGIN\n");
 
@@ -152,7 +163,7 @@ GLfloat coord[][2] = {
 	if (options.v) describeDelaunayTriangulation(delTri);
 
 	freeDelaunayTriangulation(delTri);
-	printf("Freed the DelaunayTriangulation\n");
+	if (options.v) printf("Freed the DelaunayTriangulation\n");
 #else
 
 	bov_points_t *coordDraw = bov_points_new(coord, nPoints, GL_STATIC_DRAW);

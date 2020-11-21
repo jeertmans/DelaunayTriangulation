@@ -13,6 +13,9 @@ GLfloat random_gauss(GLfloat mu, GLfloat sigma);
 void random_uniform_points(GLfloat coord[][2], GLsizei n,
                            GLfloat min[2], GLfloat max[2]);
 
+void random_uniform_points_in_circle(GLfloat coord[][2], GLsizei n,
+                                     GLfloat min[2], GLfloat max[2]);
+
 /* creating random points following a gaussian distribution.
  * around multiple centroid (maximum 6 centroids) which
  * are uniformly */

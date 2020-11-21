@@ -30,6 +30,12 @@ typedef struct DelaunayTriangulation {
 } DelaunayTriangulation;
 
 DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n);
+void resetDelaunayTriangulation(DelaunayTriangulation *delTri);
+GLsizei getPointIndex(DelaunayTriangulation *delTri, GLfloat point[2]);
+GLfloat getDistanceToClosestPoint(DelaunayTriangulation *delTri, GLfloat point[2]);
+int addPoint(DelaunayTriangulation *delTri, GLfloat point[2]);
+int deletePointAtIndex(DelaunayTriangulation *delTri, GLsizei i_p);
+int deletePoint(DelaunayTriangulation *delTri, GLfloat point[2]);
 void freeDelaunayTriangulation(DelaunayTriangulation *delTri);
 void describeDelaunayTriangulation(DelaunayTriangulation *delTri);
 GLsizei getDelaunayTriangulationNumberOfLines(DelaunayTriangulation *delTri);
@@ -51,7 +57,7 @@ int pointCompareEdge(DelaunayTriangulation *delTri, GLsizei i_p, Edge *e);
 void triangulateDT(DelaunayTriangulation *delTri);
 void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er);
 
-
+void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]);
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window);
 
 #endif

@@ -23,6 +23,23 @@ void random_uniform_points(GLfloat coord[][2], GLsizei n,
 	}
 }
 
+/* fill coord with random coordinates following an uniform distribution */
+void random_uniform_points_in_circle(GLfloat coord[][2], GLsizei n,
+                           GLfloat min[2], GLfloat max[2])
+{
+	GLfloat a, b, x, y;
+	a = max[0] - min[0];
+	b = max[1] - min[1];
+	for (GLsizei i=0; i<n; i++) {
+		do {
+			coord[i][0] = (max[0] - min[0]) * rand() / RAND_MAX + min[0];
+			coord[i][1] = (max[1] - min[1]) * rand() / RAND_MAX + min[1];
+			x = coord[i][0] - a/2;
+			y = coord[i][1] - b/2;
+		} while (((2*x/a)*(2*x/a) + (2*y/b)*(2*y/b))> 1);
+	}
+}
+
 
 /* creating random points following a gaussian distribution.
  * around multiple centroid (maximum 6 centroids) which
