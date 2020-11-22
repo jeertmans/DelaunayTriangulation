@@ -863,7 +863,23 @@ void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]) {
 	mouse_pos[1] = (window->cursorPos[1] - window->param.translate[1]);
 }
 
+void getPythonSoundCommand(char *command) {
+	char path[PATH_MAX];
+	strncpy(path, __FILE__, strlen(__FILE__) - 10); // Removes "delaunay.c"
+	strcat(path, "sound.py");
+	strcat(command, "");
+	strcat(command, path);
+}
+
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window) {
+
+	char command[PATH_MAX];
+	getPythonSoundCommand(command);
+	printf("command: %s\n", command);
+
+	char *args[] = {"python3", command, NULL};
+
+	int a = execvp(args[0], &args[0]);
 
 	// Information text
 	bov_text_t* text = bov_text_new(
