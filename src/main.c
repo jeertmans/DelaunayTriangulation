@@ -20,7 +20,7 @@ All the parameters below are optionnal:\n\
 \t[-a x_axis] x span (double) when generating uniform(-circle) random points\n\
 \t[-b y_axis] y span (double) when generating uniform(-circle) random points\n\
 \t[-d disable_drawing] disable drawing\n\
-\t[-h] displays help and exit\n"
+\t[-h] displays help and exits\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"
 #define ERR_DO_THE_NEEDFUL "do_the_needful blew up"

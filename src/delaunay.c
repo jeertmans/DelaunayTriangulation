@@ -869,11 +869,14 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	bov_text_t* text = bov_text_new(
 		(GLubyte[]) {"This plot is interactive!\n"
 		             "\xf8 Press [A/D] to add/delete a point nearby your cursor\n"
-					 "\xf8 Hold  [S]   to select a point nearby your cursor and change its location\n"
+					 "\xf8 Hold  [S]   to select a point nearby your cursor and\n"
+					 "              change its location\n"
 					 "\xf8 Press [V]   to show/hide Voronoi diagram\n"
 		             "\xf8 Press [F]   to switch between fast and pretty drawing\n"
 				     "\xf8 Press [X]   to show/hide this text\n"
-				     "\xf8 Press [H]   to show/hide the default help menu"},
+				     "\xf8 Press [H]   to show/hide the default help menu\n\n"
+				 	 "\x8a Features using DRAG & DROP may not work correctly\n"
+					 "with a trackpad: please use a mouse."},
 		GL_STATIC_DRAW);
 	bov_text_set_space_type(text, PIXEL_SPACE);
 	bov_text_param_t text_parameters = bov_text_get_param(text);
