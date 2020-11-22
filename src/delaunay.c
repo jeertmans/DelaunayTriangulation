@@ -20,7 +20,6 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
     // Points
     delTri->n_points = n;
     delTri->points = malloc(sizeof(delTri->points[0]) * n);
-	printf("points: %p\n", delTri->points);
 
 	for (GLsizei i = 0; i < n; i++) {
 		delTri->points[i][0] = points[i][0];
@@ -39,18 +38,22 @@ void resetDelaunayTriangulation(DelaunayTriangulation *delTri) {
 	}
 
 	// (Half) Edges
-	delTri->n_edges_max = (GLsizei) ceil((log(delTri->n_points) * 3 * delTri->n_points));
+	if (delTri->n_points == 0) {
+		delTri->n_edges_max = 0;
+	}
+	else {
+		delTri->n_edges_max = (GLsizei) ceil((log(delTri->n_points) * 3 * delTri->n_points));
+	}
+
 	delTri->n_edges = 0;
 	delTri->n_edges_discarded = 0;
 	delTri->edges = malloc(sizeof(Edge) * delTri->n_edges_max);
 
 	if ((delTri->edges == NULL) && (delTri->n_points > 1)) {
-		printf("Could't allocate memory for edges\n");
+		printf("ERROR: Could't allocate memory for edges\n");
 		free(delTri);
-		return;
+		exit(1);
 	}
-
-	printf("RESET done\n");
 
 	delTri->success = 0;
 }
@@ -99,26 +102,26 @@ void updatePointAtIndex(DelaunayTriangulation *delTri, GLsizei i_p, GLfloat poin
 }
 
 int addPoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
-	if (getDistanceToClosestPoint(delTri, point) <= 1e-10) {
+	if (getDistanceToClosestPoint(delTri, point) <= MIN_DIST) {
 		return 0;
 	}
-	printf("ADD\n");
 
 	GLsizei idx = delTri->n_points;
 	delTri->n_points += 1;
 
 	GLfloat (*points)[2];
 	if (delTri->points == NULL) {
-		printf("NO POINT\n");
 		delTri->points = malloc(sizeof(delTri->points[0]) * delTri->n_points);
 	}
 	points = realloc(delTri->points, sizeof(delTri->points[0]) * delTri->n_points);
-	// Should assert(points);
+	if (points == 0) {
+		printf("ERROR: Couldn't allocate more memory for points\n");
+		exit(1);
+	}
 	delTri->points = points;
 	delTri->points[idx][0] = point[0];
 	delTri->points[idx][1] = point[1];
 
-	printf("DONE adding\n");
 	resetDelaunayTriangulation(delTri);
 	return 1;
 }
@@ -190,6 +193,7 @@ void describeDelaunayTriangulation(DelaunayTriangulation *delTri) {
 		   delTri->n_points, delTri->points,
 	   	   delTri->n_edges, delTri->n_edges_discarded, delTri->n_edges_max, delTri->edges,
 	   	   delTri->success);
+	if (delTri->success) printf("\t- Number of triangles:        %d\n", getNumberOfTriangles(delTri));
 }
 
 /*
@@ -231,6 +235,167 @@ void getDelaunayTriangulationLines(DelaunayTriangulation *delTri,
 	}
 }
 
+/*
+ * Returns the number of triangles in the DelaunayTriangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ *
+ * returns:		the number of of triangles
+ */
+GLsizei getNumberOfTriangles(DelaunayTriangulation *delTri) {
+	if ((delTri->n_points < 3) || (!delTri->success)) {
+		return 0;
+	}
+	char *visited_edges = calloc(delTri->n_edges, sizeof(char));
+	GLsizei n_triangles = 0;
+	Edge *e;
+
+	for (GLsizei i = 0; i < delTri->n_edges; i++) {
+		e = &(delTri->edges[i]);
+		if ((!e->discarded) && (visited_edges[i] == 0)) {
+			do {
+				visited_edges[e->idx] = 1;
+				e = e->onext->sym;
+			} while (e->idx != i);
+			n_triangles ++;
+		}
+	}
+
+	free(visited_edges);
+
+	return n_triangles - 1; // Remove the "outside"
+
+}
+
+/*
+ * Populates an array of n_triangles points with the center of each the
+ * circumscribed circle in the DelaunayTriangulation.
+ * Addionally, populates an second array with, for each triangle, the indices
+ * of the neighboring triangles. -1 means that the neighbors is the "outside".
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * centers:		the preallocated array that will contain the centers
+ * neighbors:	the preallocated array that will contain the neighbors
+ * n_triangles:	the number of triangles (centers)
+ */
+void getVoronoiCentersAndNeighbors(DelaunayTriangulation *delTri,
+								   GLfloat centers[][2],
+								   GLsizei neighbors[][3],
+							   	   GLsizei n_triangles) {
+
+	if ((delTri->n_points < 3) || (!delTri->success)) {
+		return;
+	}
+
+	// First, allocate some
+   	char *visited_edges = calloc(delTri->n_edges, sizeof(char));
+	GLsizei *edges_triangle = malloc(sizeof(GLsizei) * delTri->n_edges);
+
+	GLsizei i_tri, i_e;
+	i_tri = 0;
+
+   	Edge *e;
+	int outside_found = 0;
+
+	GLsizei triPoints[3] = {0, 0, 0};
+
+   	for (GLsizei i = 0; i < delTri->n_edges; i++) {
+   		e = &(delTri->edges[i]);
+   		if ((!e->discarded) && (visited_edges[i] == 0)) {
+			//printf("CMP to next: %d\n", pointCompareEdge(delTri, e->onext->dest, e));
+			// Only one set of edges is on the exterior
+			// Once it's found, no need to check anymore
+			if ((!outside_found) && (pointCompareEdge(delTri, e->onext->dest, e) == 1)) {
+				//printf("FOUND one outside\n");
+				do {
+					// Edge has been now visited
+	   				visited_edges[e->idx] = 1;
+					//printf("Edge %d lies in the exterior\n", e->idx);
+					edges_triangle[e->idx] = n_triangles; // n_triangles = "outside"
+	   				e = e->onext->sym;
+	   			} while (e->idx != i);
+				outside_found = 1;
+			}
+			else {
+				i_e = 0;
+				do {
+					// Edge has been now visited
+	   				visited_edges[e->idx] = 1;
+
+					// This edge is inside triangles[i_tri] but has neighbor
+					// given by the edge's symetrical
+					neighbors[i_tri][i_e] = e->sym->idx;
+					edges_triangle[e->idx] = i_tri;
+					triPoints[i_e] = e->orig;
+	   				e = e->onext->sym;
+					i_e++;
+	   			} while (e->idx != i);
+
+				circleCenter(delTri, triPoints[0], triPoints[1], triPoints[2], centers[i_tri]);
+
+				i_tri++;
+			}
+   		}
+   	}
+
+	// Each triangle will now have have its neighbors to be Voronoi centers
+	for(i_tri = 0; i_tri < n_triangles; i_tri++) {
+		neighbors[i_tri][0] = edges_triangle[neighbors[i_tri][0]];
+		neighbors[i_tri][1] = edges_triangle[neighbors[i_tri][1]];
+		neighbors[i_tri][2] = edges_triangle[neighbors[i_tri][2]];
+
+	}
+
+	// Free allocated memory
+   	free(visited_edges);
+	free(edges_triangle);
+
+}
+
+/*
+ * Populates an array with 3 * 2 * n_triangles points, that will be the lines
+ * that link Voronoi centers with their neighbors.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * centers:		the centers
+ * neighbors:	the neighbors
+ * lines:		the preallocated array that will contain the lines
+ * n_triangles:	the number of triangles (centers)
+ */
+void getVoronoiLines(DelaunayTriangulation *delTri,
+					 GLfloat centers[][2],
+					 GLsizei neighbors[][3],
+					 GLfloat lines[][2],
+					 GLsizei n_triangles) {
+
+	if ((delTri->n_points < 3) || (!delTri->success)) {
+		return;
+	}
+
+	GLsizei i_tri, i_nei, i;
+
+	GLsizei l_i = 0;
+
+	for(i_tri = 0; i_tri < n_triangles; i_tri++) {
+		for (i = 0; i < 3; i++) {
+			lines[l_i    ][0] = centers[i_tri][0];
+			lines[l_i    ][1] = centers[i_tri][1];
+			i_nei = neighbors[i_tri][i];
+
+			if (i_nei == n_triangles){ // neighbor is "outside"
+				lines[l_i + 1][0] = centers[i_tri][0];
+				lines[l_i + 1][1] = centers[i_tri][1];
+			}
+			else {
+				lines[l_i + 1][0] = centers[i_nei][0];
+				lines[l_i + 1][1] = centers[i_nei][1];
+			}
+			l_i += 2;
+		}
+	}
+
+}
+
 ////////////////////////////////////////////////
 // End: DelaunayTriangulation structure utils //
 ////////////////////////////////////////////////
@@ -259,8 +424,10 @@ Edge* addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest) {
 		exit(1);
 	}
 
+	Edge *e, *s;
+
 	// Main edge
-	Edge *e = &(delTri->edges[delTri->n_edges]);
+	e = &(delTri->edges[delTri->n_edges]);
 	e->idx = delTri->n_edges;
 	delTri->n_edges += 1;
 
@@ -269,7 +436,7 @@ Edge* addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest) {
 	e->dest = dest;
 
 	// Symetrical edge
-	Edge *s =&(delTri->edges[delTri->n_edges]);
+	s =&(delTri->edges[delTri->n_edges]);
 	s->idx = delTri->n_edges;
 	delTri->n_edges += 1;
 
@@ -316,7 +483,7 @@ void describeEdge(Edge *e) {
  * b: 			the second edge
  */
 void spliceEdges(DelaunayTriangulation *delTri, Edge *a, Edge *b) {
-	if (a == b) {
+	if (a->idx == b->idx) {
 		return;
 	}
 
@@ -410,7 +577,7 @@ GLfloat _det_3x3_(GLfloat m[3][3]) {
 }
 
 /*
- * Indicates wether a point is inside a circumcircle.
+ * Indicates wether a point is inside a circumscribed circle.
  *
  * delTri:		the DelaunayTriangulation structure
  * i_p:			the index of the point
@@ -438,6 +605,29 @@ int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsiz
 
 	det = a1*b2*c3 + a2*b3*c1 + a3*b1*c2 - (a3*b2*c1 + a1*b3*c2 + a2*b1*c3);
     return det <= 0;
+}
+
+void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsizei i_c, GLfloat center[2]) {
+	// https://www.codewars.com/kata/5705785658b58f387b001ffc
+	GLfloat *point, *a, *b, *c;
+	a = delTri->points[i_a];
+	b = delTri->points[i_b];
+	c = delTri->points[i_c];
+	GLfloat aa, bb, cc, dy_bc, dy_ca, dy_ab, d;
+
+	aa = a[0] * a[0] + a[1] * a[1];
+	bb = b[0] * b[0] + b[1] * b[1];
+	cc = c[0] * c[0] + c[1] * c[1];
+
+	dy_bc = b[1] - c[1];
+	dy_ca = c[1] - a[1];
+	dy_ab = a[1] - b[1];
+
+	d = 2 * (a[0] * dy_bc + b[0] * dy_ca + c[0] * dy_ab);
+
+	center[0] = (aa * dy_bc + bb * dy_ca + cc * dy_ab) / d;
+	// WARNING: there is an error is the link, it is Bx - Ax (and not the opposite)
+	center[1] = (aa * (c[0] - b[0]) + bb * (a[0] - c[0]) + cc * (b[0] - a[0])) / d;
 }
 
 int pointRightOfEdge(GLfloat point[2], GLfloat orig[2], GLfloat dest[2]) {
@@ -514,6 +704,8 @@ void triangulateDT(DelaunayTriangulation *delTri) {
 
 	// Sort points by x coordinates then by y coordinate.
 	qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
+
+	// TODO: remove duplicates.
 
 	for(GLsizei i=0; i < delTri->n_points; i++) {
 		//printf("Point = (%.4f, %.4f)\n", delTri->points[i][0], delTri->points[i][1]);
@@ -673,34 +865,38 @@ void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]) {
 
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window) {
 
+	// Information text
 	bov_text_t* text = bov_text_new(
 		(GLubyte[]) {"This plot is interactive!\n"
-		             "Press/hold [A/D/S] to [ADD/DELETE/SELECT] a point nearby your cursor.\n"
-		             "Press [F] to switch between fast and pretty drawing."},
+		             "\xf8 Press [A/D] to add/delete a point nearby your cursor\n"
+					 "\xf8 Hold  [S]   to select a point nearby your cursor and change its location\n"
+					 "\xf8 Press [V]   to show/hide Voronoi diagram\n"
+		             "\xf8 Press [F]   to switch between fast and pretty drawing\n"
+				     "\xf8 Press [X]   to show/hide this text\n"
+				     "\xf8 Press [H]   to show/hide the default help menu"},
 		GL_STATIC_DRAW);
 	bov_text_set_space_type(text, PIXEL_SPACE);
 	bov_text_param_t text_parameters = bov_text_get_param(text);
-	text_parameters.fontSize *= 0.5;
-	text_parameters.pos[1] = 40.0;
+	text_parameters.fontSize *= .7;
 	bov_text_set_param(text, text_parameters);
 
+	// Default values
 	GLfloat defaultPointWidth;
 	GLfloat updatedPointWidth;
 
 	defaultPointWidth = 0.01;
 	updatedPointWidth = 0.04;
 
+	// Points
     bov_points_t *pointsDraw = bov_points_new(delTri->points, delTri->n_points, GL_STATIC_DRAW);
 	bov_points_set_color(pointsDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
 	bov_points_set_outline_color(pointsDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
 	bov_points_set_width(pointsDraw, defaultPointWidth);
-	//bov_points_set_outline_width(pointsDraw, 0.1);
 
-
-	GLsizei n_lines;
+	// Lines (edges)
+	GLsizei n_lines = 0;
 	GLfloat (*linesPoints)[2] = NULL;
-	bov_points_t *linesDraw = bov_points_new(linesPoints, 0, GL_STATIC_DRAW);
-	bov_points_update(linesDraw, linesPoints, 2 * n_lines);
+	bov_points_t *linesDraw = bov_points_new(linesPoints, n_lines, GL_STATIC_DRAW);
 	bov_points_set_color(linesDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
 	bov_points_set_width(linesDraw, 0.004);
 	bov_points_set_outline_color(linesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
@@ -711,43 +907,61 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		printf("(%.4f, %.4f)\n", points[i][0], points[i][1]);
 	}*/
 
+	// If DelaunayTriangulation was computed, will display it
 	if (delTri->success) {
 		n_lines = getDelaunayTriangulationNumberOfLines(delTri);
 		linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
 		getDelaunayTriangulationLines(delTri, linesPoints, n_lines);
-
-		for(GLsizei i =0; i<2*n_lines; i++) {
-			//printf("lines[%d]=(%.4f, %.4f)\n", i, linesPoints[i][0], linesPoints[i][1]);
-		}
+		bov_points_update(linesDraw, linesPoints, 2 * n_lines);
 	}
 
+	// Some key bindings
+	// WARNING: here, I suppose you have an AZERTY layout
 	int FAST = (delTri->n_points > 100);
+	int VORONOI = 0;
 	int REQUIRE_UPDATE = 0;
-	int KEY_A, KEY_D, KEY_S, KEY_F;
-	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F;
-	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = 0;
+	int HIDE_TEXT = 0;
+	int KEY_A, KEY_D, KEY_S, KEY_F, KEY_V, KEY_X;
+	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F, LAST_KEY_V, LAST_KEY_X;
+	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = LAST_KEY_V = LAST_KEY_X = 0;
 
 	int idx = -1;
+
+	// Mouse
 	GLfloat mousePoint[][2] = {{0.0, 0.0}};
-
-
 	bov_points_t *mouseDraw = bov_points_new(mousePoint, 1, GL_STATIC_DRAW);
 	bov_points_set_color(mouseDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 0.0});
 	bov_points_set_outline_color(mouseDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
 	bov_points_set_width(mouseDraw, defaultPointWidth);
 	bov_points_set_outline_width(mouseDraw, -.1);
 
-	while(!bov_window_should_close(window)){
-		getMousePosition(window, mousePoint[0]);
+	// Voronoi
+	GLsizei n_triangles = 0;
+	GLfloat (*voronoiCenters)[2] = NULL;
+	bov_points_t *voronoiCentersDraw = bov_points_new(voronoiCenters, n_triangles, GL_STATIC_DRAW);
+	bov_points_set_color(voronoiCentersDraw, (GLfloat[4]) {0.0, 1.0, 0.0, 1.0});
+	bov_points_set_outline_color(voronoiCentersDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
+	bov_points_set_width(voronoiCentersDraw, defaultPointWidth);
 
-		// printf("(x, y) = (%.4f, %.4f)\n", window->cursorPos[0], window->cursorPos[1]);
-		KEY_A = glfwGetKey(window->self, GLFW_KEY_Q); // QWERTY layout
+	GLsizei n_voronoi_lines = 0;
+	GLsizei (*voronoiNeighbors)[3] = NULL;
+	GLfloat (*voronoiLines)[2] = NULL;
+	bov_points_t *voronoiLinesDraw = bov_points_new(linesPoints, n_lines, GL_STATIC_DRAW);
+	bov_points_set_color(voronoiLinesDraw, (GLfloat[4]) {0.0, 0.0, 1.0, 1.0});
+	bov_points_set_width(voronoiLinesDraw, 0.004);
+	bov_points_set_outline_color(voronoiLinesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
+	bov_points_set_outline_width(voronoiLinesDraw, .002);
+
+
+	while(!bov_window_should_close(window)){
+		// 1. Handle key bindings
+		getMousePosition(window, mousePoint[0]);
+		KEY_A = glfwGetKey(window->self, GLFW_KEY_Q); // QWERTY -> AZERTY layout
 		KEY_D = glfwGetKey(window->self, GLFW_KEY_D);
 		KEY_S = glfwGetKey(window->self, GLFW_KEY_S);
 		KEY_F = glfwGetKey(window->self, GLFW_KEY_F);
-
-		//printf("Mouse at (%.4f, %.4f)\n", mouse_pos[0], mouse_pos[1]);
-		//printf("Param: res(%.4f, %4f), translate(%.4f, %4f), zoom(%.4f)\n", window->param.res[0], window->param.res[1], window->param.translate[0], window->param.translate[1], window->param.zoom);
+		KEY_V = glfwGetKey(window->self, GLFW_KEY_V);
+		KEY_X = glfwGetKey(window->self, GLFW_KEY_X);
 
 		if (KEY_A) {
 			if (!LAST_KEY_A) {
@@ -784,56 +998,153 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		else {
 			LAST_KEY_F = KEY_F;
 		}
+		if (KEY_V) {
+			if (!LAST_KEY_V) {
+				VORONOI = !VORONOI;
+				LAST_KEY_V = KEY_V;
+				REQUIRE_UPDATE = 1;
+			}
+		}
+		else {
+			LAST_KEY_V = KEY_V;
+		}
+		if (KEY_X) {
+			if (!LAST_KEY_X) {
+				HIDE_TEXT = !HIDE_TEXT;
+				LAST_KEY_X = KEY_X;
+			}
+		}
+		else {
+			LAST_KEY_X = KEY_X;
+		}
+
+		// 1.A If key bindings required an update in the drawing
 		if (REQUIRE_UPDATE) {
+			// Recompute triangulation
 			triangulateDT(delTri);
 			if (delTri->success) {
-				bov_points_update(pointsDraw, delTri->points, delTri->n_points);
+
+				// Free old lines
 				if (linesPoints != NULL) free(linesPoints);
+
+				// Get new lines
 				n_lines = getDelaunayTriangulationNumberOfLines(delTri);
 				linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
 				getDelaunayTriangulationLines(delTri, linesPoints, n_lines);
+
+				// Update lines
 				bov_points_update(linesDraw, linesPoints, 2 * n_lines);
+
+				if (VORONOI) {
+					// Free old data
+					if (voronoiCenters != NULL) free(voronoiCenters);
+					if (voronoiNeighbors != NULL) free(voronoiNeighbors);
+					if (voronoiLines != NULL) free(voronoiLines);
+
+					// Get new Voronoi centers and lines
+					n_triangles = getNumberOfTriangles(delTri);
+
+					voronoiCenters = malloc(sizeof(voronoiCenters[0]) * n_triangles);
+					voronoiNeighbors = malloc(sizeof(voronoiNeighbors[0]) * n_triangles);
+
+					getVoronoiCentersAndNeighbors(delTri,
+												  voronoiCenters,
+											      voronoiNeighbors,
+											      n_triangles);
+
+					// Update Voronoi centers
+					bov_points_update(voronoiCentersDraw, voronoiCenters, n_triangles);
+
+					//voronoiLines = malloc(sizeof(voronoiLines[0]) * 3 * 2 * n_triangles);
+					voronoiLines = calloc(sizeof(voronoiLines[0]), 3 * 2 * n_triangles);
+
+					getVoronoiLines(delTri,
+									voronoiCenters,
+									voronoiNeighbors,
+									voronoiLines,
+									n_triangles);
+
+					bov_points_update(voronoiLinesDraw, voronoiLines, 3 * 2 * n_triangles);
+
+				}
 			}
 
+			// Update new points
+			bov_points_update(pointsDraw, delTri->points, delTri->n_points);
+
+			// Draws a red point where the mouse was when key was pressed
 			bov_points_update(mouseDraw, mousePoint, 1);
 			bov_points_set_color(mouseDraw, (GLfloat[4]) {1.0, 0.0, 0.0, 1.0});
 			bov_points_set_width(mouseDraw, updatedPointWidth);
+
+			GLsizei n_triangles = getNumberOfTriangles(delTri);
+
 			REQUIRE_UPDATE = 0;
 		}
+		// 1.B If no update required, a smooth fading is applied to the red point
 		else {
 			bov_points_param_t param = bov_points_get_param(mouseDraw);
 			param.fillColor[3] *= 0.95;
 			param.width -= (param.width - defaultPointWidth) / 10;
 			bov_points_set_param(mouseDraw, param);
 		}
-		//printf("A=%d, D=%d, S=%d\n", KEY_A, KEY_D, KEY_S);
+
+		// 2. Drawing
 		if (delTri->success) {
 			if (FAST) {
 				bov_fast_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+				if (VORONOI) {
+					bov_fast_lines_draw(window, voronoiLinesDraw, 0, BOV_TILL_END);
+					bov_fast_points_draw(window, voronoiCentersDraw, 0, BOV_TILL_END);
+				}
 			}
 			else {
 				bov_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+				if (VORONOI) {
+					bov_lines_draw(window, voronoiLinesDraw, 0, BOV_TILL_END);
+					bov_points_draw(window, voronoiCentersDraw, 0, BOV_TILL_END);
+				}
 			}
 		}
 		if (FAST) {
-			bov_fast_points_draw(window, pointsDraw, 0, delTri->n_points);
+			bov_fast_points_draw(window, pointsDraw, 0, BOV_TILL_END);
 			bov_fast_points_draw(window, mouseDraw, 0, 1);
 		}
 		else {
-			bov_points_draw(window, pointsDraw, 0, delTri->n_points);
+			bov_points_draw(window, pointsDraw, 0, BOV_TILL_END);
 			bov_points_draw(window, mouseDraw, 0, 1);
 		}
 		//printf("UPDATE\n");
 		//bov_window_screenshot(window, "test.ppm");
-		bov_text_draw(window, text);
+
+		// 3. Adjust text place and boldness
+
+		text_parameters.pos[1] = bov_window_get_yres(window) - 30 ;
+		bov_text_set_param(text, text_parameters);
+
+		double wtime = bov_window_get_time(window);
+		bov_text_set_boldness(text, 0.3 * sin(2 * wtime) + 0.3);
+
+		if (!HIDE_TEXT) bov_text_draw(window, text);
+
+		// 4. Update windows
 		bov_window_update(window);
 	}
 
+	// Free all memory allocated
+	bov_text_delete(text);
 	bov_points_delete(pointsDraw);
+	bov_points_delete(linesDraw);
 	bov_points_delete(mouseDraw);
+	bov_points_delete(voronoiCentersDraw);
+	bov_points_delete(voronoiLinesDraw);
 
-	if (delTri->success) {
-		bov_points_delete(linesDraw);
-		free(linesPoints);
-	}
+	if (linesPoints != NULL) free(linesPoints);
+	if (voronoiCenters != NULL) free(voronoiCenters);
+	if (voronoiNeighbors != NULL) free(voronoiNeighbors);
+	if (voronoiLines != NULL) free(voronoiLines);
 }
+
+////////////////////////////
+// End: Drawing functions //
+////////////////////////////

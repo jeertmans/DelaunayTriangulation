@@ -4,6 +4,8 @@
 #include "BOV.h"
 #include "math.h"
 
+#define MIN_DIST 1E-10 // Minimim distance between two points (used to avoid placing multiple points at the same location)
+
 
 typedef struct Edge {
     GLsizei orig, dest;     // indices of origin and destinations points
@@ -40,6 +42,9 @@ void freeDelaunayTriangulation(DelaunayTriangulation *delTri);
 void describeDelaunayTriangulation(DelaunayTriangulation *delTri);
 GLsizei getDelaunayTriangulationNumberOfLines(DelaunayTriangulation *delTri);
 void getDelaunayTriangulationLines(DelaunayTriangulation *delTri, GLfloat lines[][2], GLsizei n_lines);
+GLsizei getNumberOfTriangles(DelaunayTriangulation *delTri);
+void getVoronoiCentersAndNeighbors(DelaunayTriangulation *delTri, GLfloat centers[][2], GLsizei neighbors[][3], GLsizei n_triangles);
+void getVoronoiLines(DelaunayTriangulation *delTri, GLfloat centers[][2], GLsizei neighbors[][3], GLfloat lines[][2], GLsizei n_triangles);
 
 Edge* addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest);
 void describeEdge(Edge *e);
@@ -50,6 +55,7 @@ void deleteEdge(DelaunayTriangulation *delTri, Edge *e);
 static int compare_points(const void *a_v, const void *b_v);
 GLfloat _det_3x3_(GLfloat m[3][3]);
 int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsizei i_b, GLsizei i_c);
+void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsizei i_c, GLfloat center[2]);
 int pointRightOfEdge(GLfloat point[2], GLfloat orig[2], GLfloat dest[2]);
 int pointLeftOfEdge(GLfloat point[2], GLfloat orig[2], GLfloat dest[2]);
 int pointCompareEdge(DelaunayTriangulation *delTri, GLsizei i_p, Edge *e);

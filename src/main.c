@@ -8,17 +8,19 @@
 #include <string.h>
 #include <getopt.h>
 
-#define OPTSTR "vi:i:o:n:p:s:a:b:h"
-#define USAGE_FMT  "%s \
-[-v verbose] \
-[-i input_file] \
-[-o output_file] \
-[-n number_of_points] \
-[-p random_process] \
-[-s smoothing_factor] \
-[-a range_x for random points]\
-[-b range_y for random points]\
-[-h]\n"
+#define OPTSTR "vi:i:o:n:p:s:a:b:di:h"
+#define USAGE_FMT  "%s [-param value] ...\n\
+All the parameters below are optionnal:\n\
+\t[-v verbose] adds some verbosity to the program execution\n\
+\t[-i input_file] if present, will read points from this file where first line must be the number of points, and the next lines must match format %%lf%%lf\n\
+\t[-o output_file]\n\
+\t[-n number_of_points] number of random points\n\
+\t[-p random_process] normal, uniform(-circle), or polygon\n\
+\t[-s smoothing_factor] smoothing applied on random polygon \n\
+\t[-a x_axis] x span (double) when generating uniform(-circle) random points\n\
+\t[-b y_axis] y span (double) when generating uniform(-circle) random points\n\
+\t[-d disable_drawing] disable drawing\n\
+\t[-h] displays help and exit\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"
 #define ERR_DO_THE_NEEDFUL "do_the_needful blew up"
@@ -37,6 +39,7 @@ typedef struct options_t {
 	char *p;
 	double a;
 	double b;
+	int d;
 } options_t;
 
 
@@ -54,6 +57,7 @@ int main(int argc, char *argv[])
 		"normal",	// Random process
 		1.0,		// By default, will generate points
 		1.0,		// in a perfect square (or circle)
+		0,			// By default, we draw
 	};
 
 	// Inspired from:
@@ -101,6 +105,9 @@ int main(int argc, char *argv[])
 			case 'b':
 				options.b = strtod(optarg, NULL);
 				break;
+			case 'd':
+				options.d = 1;
+				break;
 			case 'v':
 				options.v = 1;
 				break;
@@ -113,14 +120,12 @@ int main(int argc, char *argv[])
 		}
 
 	if (options.v) {
+		printf("[STEP 1] Points generation.\n");
 		if(options.i != NULL) {
-			printf("- Loading points from input file: %s\n", options.i);
+			printf("Loading points from input file: %s.\n", options.i);
 		}
 		else {
-			printf("- Generating %d random points with a %s random process\n", options.n, options.p);
-		}
-		if(options.o != NULL) {
-			printf("- Saving results to file: %s\n", options.o);
+			printf("Generating %d random points with a %s random process.\n", options.n, options.p);
 		}
 	}
 	// give a bit of entropy for the seed of rand()
@@ -131,48 +136,98 @@ int main(int argc, char *argv[])
 	// we print the seed so you can get the distribution of points back
 	if (options.v) printf("seed=%d\n", seed);
 
-	bov_window_t* window = bov_window_new(800, 800, "My first BOV program");
-	//glDisable(GL_CULL_FACE);
-	bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
+	GLsizei n_points;
+	GLfloat (*points)[2];
 
-	const GLsizei nPoints = (GLsizei) options.n;
-	GLfloat (*coord)[2] = malloc(sizeof(coord[0]) * nPoints);
+	double x, y;
 
-	if (strcmp(options.p, "normal") == 0) {
-		random_points(coord, nPoints);
+	if (options.i != NULL) {
+		FILE *file_in = fopen(options.i, "r");
+		if (file_in == NULL) {
+			printf("ERROR: File %s not found\n", options.i);
+		}
+		if (fscanf(file_in, "%d", &n_points) != 1) {
+			printf("ERROR: First line doesn't match  %%d format\n");
+		}
+
+		points = malloc(sizeof(points[0]) * n_points);
+
+		for (GLsizei i = 0; i < n_points; i++) {
+			if (fscanf(file_in, "%lf%lf", &x, &y) != 2) {
+				printf("ERROR: Line %d could not parse x[%d], y[%d]\n", i+1, i, i);
+				exit(EXIT_FAILURE);
+			}
+			points[i][0] = (GLfloat) x;
+			points[i][1] = (GLfloat) y;
+		}
+
+		fclose(file_in);
 	}
-	else if (strcmp(options.p, "uniform") == 0) {
-		GLfloat min[2] = {0.0, 0.0};
-		GLfloat max[2] = {options.a, options.b};
-		random_uniform_points(coord, nPoints, min, max);
-	}
-	else if (strcmp(options.p, "uniform-circle") == 0) {
-		GLfloat min[2] = {0.0, 0.0};
-		GLfloat max[2] = {options.a, options.b};
-		random_uniform_points_in_circle(coord, nPoints, min, max);
-	}
-	else if (strcmp(options.p, "polygon") == 0) {
-		random_polygon(coord, nPoints, options.s);
+	else {
+		n_points = (GLsizei) options.n;
+		points = malloc(sizeof(points[0]) * n_points);
+
+		if (strcmp(options.p, "normal") == 0) {
+			random_points(points, n_points);
+		}
+		else if (strcmp(options.p, "uniform") == 0) {
+			GLfloat min[2] = {0.0, 0.0};
+			GLfloat max[2] = {options.a, options.b};
+			random_uniform_points(points, n_points, min, max);
+		}
+		else if (strcmp(options.p, "uniform-circle") == 0) {
+			GLfloat min[2] = {0.0, 0.0};
+			GLfloat max[2] = {options.a, options.b};
+			random_uniform_points_in_circle(points, n_points, min, max);
+		}
+		else if (strcmp(options.p, "polygon") == 0) {
+			random_polygon(points, n_points, options.s);
+		}
 	}
 #if 1
-	if (options.v) printf("BEGIN\n");
+	if (options.v) printf("[STEP 2] DelaunayTriangulation\n");
 
 	DelaunayTriangulation *delTri;
-	delTri = initDelaunayTriangulation(coord, nPoints);
+
+	clock_t begin = clock();
+
+	delTri = initDelaunayTriangulation(points, n_points);
+
+	if (options.v) {
+		printf("DelaunayTriangulation structure was allocated in %.6f s.\n",
+			   (double) (clock() - begin) / CLOCKS_PER_SEC);
+	}
+
+	begin = clock();
+
 	triangulateDT(delTri);
+
+	if (options.v) {
+		printf("DelaunayTriangulation was computed in %.6f s.\n",
+			   (double) (clock() - begin) / CLOCKS_PER_SEC);
+	}
 
 	if (options.v) describeDelaunayTriangulation(delTri);
 
-	if (options.v) printf("DONE, will draw\n");
+	if (options.v) printf("[STEP 3] Drawing\n");
 
-	drawDelaunayTriangulation(delTri, window);
+	if (!options.d) {
+		bov_window_t* window = bov_window_new(-1, 1, "DelaunayTriangulation - Jérome Eertmans");
+		//glDisable(GL_CULL_FACE);
+		bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
+		drawDelaunayTriangulation(delTri, window);
+		bov_window_delete(window);
+	}
+	else {
+		printf("Drawing step skipped.\n");
+	}
 
-	if (options.v) printf("END\n");
+	if (options.v) printf("[STEP 4] Final state\n");
 
 	if (options.v) describeDelaunayTriangulation(delTri);
 
 	freeDelaunayTriangulation(delTri);
-	if (options.v) printf("Freed the DelaunayTriangulation\n");
+	if (options.v) printf("DelaunayTriangulation structure freed.\n");
 #else
 
 	bov_points_t *coordDraw = bov_points_new(coord, nPoints, GL_STATIC_DRAW);
@@ -194,7 +249,7 @@ int main(int argc, char *argv[])
 	bov_points_delete(coordDraw);
 	//free(coord);
 #endif
-	bov_window_delete(window);
+	free(points);
 
 	return EXIT_SUCCESS;
 }
