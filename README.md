@@ -1,8 +1,9 @@
 # Numerical Geometry Project
 
-Author: Jérome Eertmans (13551600)
-Course: Numerical Geometries (LMECA2710)
-Algorithm: Delaunay triangulation
+- Author: Jérome Eertmans (13551600)
+- Course: Numerical Geometries (LMECA2710)
+- Algorithm: Delaunay triangulation
+
 
 ## How to use this project
 
