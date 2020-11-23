@@ -17,7 +17,7 @@ cd ..
 
 Then you can execute the program. A variety of parameters is available, please use `-h` flag to see them.
 ```
-./build/bin/lmeca2710_project
+./build/bin/lmeca2710_project [-param value] ...
 ```
 
 

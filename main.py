@@ -11,6 +11,9 @@ from watchdog.events import FileSystemEventHandler
 global keys_file
 keys_file = None
 
+global on
+on = 0
+
 class MyHandler(FileSystemEventHandler):
     def __init__(self, sound_files_map, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,13 +21,18 @@ class MyHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         global keys_file
+        global on
         if keys_file is None:
             keys_file = open(event.src_path, "r");
 
         key = keys_file.readline().strip()
 
         if key in self.sound_files_map:
-            soundObj = pygame.mixer.Sound(self.sound_files_map[key])
+            if key == "V":
+                soundObj = pygame.mixer.Sound(self.sound_files_map[key][on])
+                on = (on + 1) % 2
+            else:
+                soundObj = pygame.mixer.Sound(self.sound_files_map[key])
             soundObj.play()
         #print(f'event type: {event.event_type}  path : {event.src_path}')
 
@@ -43,7 +51,10 @@ theme = "synthwave.wav"
 # Sound effects
 
 sfm = dict(A=os.path.join(cur_dir, sound_dir, "pew.wav"),
-           D=os.path.join(cur_dir, sound_dir, "boum.wav"))
+           D=os.path.join(cur_dir, sound_dir, "boum.wav"),
+           V=(os.path.join(cur_dir, sound_dir, "turn_on.wav"),
+              os.path.join(cur_dir, sound_dir, "turn_off.wav"))
+)
 
 pygame.mixer.init()
 
@@ -63,7 +74,7 @@ if __name__ == "__main__":
     soundObj = pygame.mixer.Sound(file)
 
     time.sleep(1)
-    
+
     soundObj.play(-1)
     while process.poll() is None:
         time.sleep(0.5)

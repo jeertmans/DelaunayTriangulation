@@ -1,6 +1,6 @@
 #include "delaunay.h"
 
-// Inspired from: https://github.com/alexbaryzhikov/triangulation
+// Inspired from: https://github.com/alexbaryzhikov/triangulation (Python code)
 
 //////////////////////////////////////////////////
 // Begin: DelaunayTriangulation structure utils //
@@ -563,20 +563,6 @@ static int compare_points(const void *a_v, const void *b_v)
 }
 
 /*
- * Computes the determinant of a 3 x 3 matrix.
- *
- * m:			the matrix
- *
- * returns:		the determinant
- */
-GLfloat _det_3x3_(GLfloat m[3][3]) {
-    // |A| = a(ei − fh) − b(di − fg) + c(dh − eg)
-    return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
-         - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
-         + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-}
-
-/*
  * Indicates wether a point is inside a circumscribed circle.
  *
  * delTri:		the DelaunayTriangulation structure
@@ -607,6 +593,13 @@ int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsiz
     return det <= 0;
 }
 
+/*
+ * Determines the center of the circumscribed circle based on triangle points.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * i_a,b,c:		the index of the points of the triangle
+ * center:		the preallocated array that will contain the center
+ */
 void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsizei i_c, GLfloat center[2]) {
 	// https://www.codewars.com/kata/5705785658b58f387b001ffc
 	GLfloat *point, *a, *b, *c;
@@ -628,22 +621,6 @@ void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsiz
 	center[0] = (aa * dy_bc + bb * dy_ca + cc * dy_ab) / d;
 	// WARNING: there is an error is the link, it is Bx - Ax (and not the opposite)
 	center[1] = (aa * (c[0] - b[0]) + bb * (a[0] - c[0]) + cc * (b[0] - a[0])) / d;
-}
-
-int pointRightOfEdge(GLfloat point[2], GLfloat orig[2], GLfloat dest[2]) {
-	GLfloat det;
-
-	det = (orig[0] - point[0]) * (dest[1] - point[1]) - (orig[1] - point[1]) * (dest[0] - point[0]);
-
-	return det > 0;
-}
-
-int pointLeftOfEdge(GLfloat point[2], GLfloat orig[2], GLfloat dest[2]) {
-	GLfloat det;
-
-	det = (orig[0] - point[0]) * (dest[1] - point[1]) - (orig[1] - point[1]) * (dest[0] - point[0]);
-
-	return det < 0;
 }
 
 /*
@@ -769,12 +746,13 @@ void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge
 		}
 	}
 	else {
+		// Recusively calls this function on half the points
 		GLsizei m = (n + 1) / 2;
 		Edge *ldo, *ldi, *rdi, *rdo;
 		triangulate(delTri, start, 		start + m, 	&ldo, &ldi);
 		triangulate(delTri, start + m, 	end, 		&rdi, &rdo);
 
-
+		// Computes the upper common tangent of left and right edges
 		while (1) {
 			if 		(pointCompareEdge(delTri, rdi->orig, ldi) ==  1) {
 				ldi = ldi->sym->onext;
@@ -789,8 +767,10 @@ void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge
 
 		Edge *base;
 
+		// Creates an edge between rdi.orig and ldi.orig
 		base = connectEdges(delTri, ldi->sym, rdi);
 
+		// Ajdusts ldo and rdo
 		if (ldi->orig == ldo->orig) {
 			ldo = base;
 		}
@@ -801,15 +781,21 @@ void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge
 		Edge *lcand, *rcand, *tmp;
 		int v_rcand, v_lcand;
 
+		// We merge both parts
 		while (1) {
+			// Locates the first right and left points to be encountered
+			// by the diving bubble
+
 			rcand = base->sym->onext;
 			lcand = base->oprev;
 
 			v_rcand = (pointCompareEdge(delTri, rcand->dest, base) == 1);
 			v_lcand = (pointCompareEdge(delTri, lcand->dest, base) == 1);
 			if (!(v_rcand || v_lcand)) {
+				// Merge is done
 				break;
 			}
+			// Deletes right edges that fail the circle test
 			if (v_rcand) {
 				while ((pointCompareEdge(delTri, rcand->onext->dest, base) == 1) &&
 					   (pointInCircle(delTri, rcand->onext->dest, base->dest, base->orig, rcand->dest))
@@ -820,6 +806,7 @@ void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge
 						   rcand = tmp;
 					   }
 			}
+			// Deletes left edges that fail the circle test
 			if (v_lcand) {
 				while ((pointCompareEdge(delTri, lcand->oprev->dest, base) == 1) &&
 					   (pointInCircle(delTri, lcand->oprev->dest, base->dest, base->orig, lcand->dest))
@@ -830,6 +817,7 @@ void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge
 						   lcand = tmp;
 					   }
 			}
+
 			if ((!v_rcand) ||
 				(v_rcand && pointInCircle(delTri, lcand->dest, rcand->dest, rcand->orig, lcand->orig))
 			) {
@@ -956,7 +944,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	bov_points_set_outline_color(voronoiLinesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
 	bov_points_set_outline_width(voronoiLinesDraw, .002);
 
-	// FUN
+	// Write keystrokes in a file
 
 	FILE *file_out = fopen("data/.keys.txt", "w");
 
@@ -1074,8 +1062,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 					// Update Voronoi centers
 					bov_points_update(voronoiCentersDraw, voronoiCenters, n_triangles);
 
-					//voronoiLines = malloc(sizeof(voronoiLines[0]) * 3 * 2 * n_triangles);
-					voronoiLines = calloc(sizeof(voronoiLines[0]), 3 * 2 * n_triangles);
+					voronoiLines = malloc(sizeof(voronoiLines[0]) * 3 * 2 * n_triangles);
 
 					getVoronoiLines(delTri,
 									voronoiCenters,
