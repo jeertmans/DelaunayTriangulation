@@ -25,8 +25,8 @@ Then you can execute the program. A variety of parameters is available, please u
 very nice sound effects!
 
 What you need:
-    - A Python3 installation
-    - 2 small Python packages (use: `pip3 install -r requirements.txt`)
+ - A Python3 installation
+ - 2 small Python packages (use: `pip3 install -r requirements.txt`)
 
 Then, you can use the produce the exact same results + some bonuses:
 ```
