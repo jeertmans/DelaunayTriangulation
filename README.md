@@ -1,13 +1,10 @@
-==========================
-Numerical Geometry Project
-==========================
+# Numerical Geometry Project
 
 Author: Jérome Eertmans (13551600)
 Course: Numerical Geometries (LMECA2710)
 Algorithm: Delaunay triangulation
 
-How to use this project
-=======================
+## How to use this project
 
 If you want to use the project, you need to first compile it:
 
@@ -37,10 +34,10 @@ python3 main.py [-param value] ...
 
 You can also modify the music theme in `main.py`.
 
-Sound bibliography
-==================
+## Sound bibliography
 
 All the musics are Copyright Free songs.
+If you wan to reuse them, please make sure to keep it as a private usage.
 
 Sound effets:
 http://soundbible.com
@@ -51,8 +48,7 @@ https://www.youtube.com/watch?v=onEyXlpdY3U
 Chill theme:
 https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100326
 
-Old README
-==========
+## Old README
 
 This folder is the canvas for your upcoming project.
 It should contain:
