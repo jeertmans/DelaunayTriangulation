@@ -3,8 +3,6 @@
 
 #include "BOV.h"
 #include "math.h"
-#include <limits.h>
-#include <unistd.h>
 
 #define MIN_DIST 1E-10 // Minimim distance between two points (used to avoid placing multiple points at the same location)
 
@@ -66,7 +64,6 @@ void triangulateDT(DelaunayTriangulation *delTri);
 void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er);
 
 void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]);
-void getPythonSoundCommand(char *command);
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window);
 
 #endif

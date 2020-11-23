@@ -1,0 +1,2 @@
+pygame==2.0.0
+watchdog==0.10.4

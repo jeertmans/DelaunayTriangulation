@@ -863,28 +863,12 @@ void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]) {
 	mouse_pos[1] = (window->cursorPos[1] - window->param.translate[1]);
 }
 
-void getPythonSoundCommand(char *command) {
-	char path[PATH_MAX];
-	strncpy(path, __FILE__, strlen(__FILE__) - 10); // Removes "delaunay.c"
-	strcat(path, "sound.py");
-	strcat(command, "");
-	strcat(command, path);
-}
-
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window) {
-
-	char command[PATH_MAX];
-	getPythonSoundCommand(command);
-	printf("command: %s\n", command);
-
-	char *args[] = {"python3", command, NULL};
-
-	int a = execvp(args[0], &args[0]);
-
 	// Information text
 	bov_text_t* text = bov_text_new(
 		(GLubyte[]) {"This plot is interactive!\n"
 		             "\xf8 Press [A/D] to add/delete a point nearby your cursor\n"
+					 "\xee Hold [SHIFT] while pressing [A/D] to repeat\n"
 					 "\xf8 Hold  [S]   to select a point nearby your cursor and\n"
 					 "              change its location\n"
 					 "\xf8 Press [V]   to show/hide Voronoi diagram\n"
@@ -941,6 +925,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	int REQUIRE_UPDATE = 0;
 	int HIDE_TEXT = 0;
 	int KEY_A, KEY_D, KEY_S, KEY_F, KEY_V, KEY_X;
+	int KEY_SHIFT;
 	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F, LAST_KEY_V, LAST_KEY_X;
 	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = LAST_KEY_V = LAST_KEY_X = 0;
 
@@ -971,6 +956,10 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	bov_points_set_outline_color(voronoiLinesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
 	bov_points_set_outline_width(voronoiLinesDraw, .002);
 
+	// FUN
+
+	FILE *file_out = fopen("data/.keys.txt", "w");
+
 
 	while(!bov_window_should_close(window)){
 		// 1. Handle key bindings
@@ -981,20 +970,25 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		KEY_F = glfwGetKey(window->self, GLFW_KEY_F);
 		KEY_V = glfwGetKey(window->self, GLFW_KEY_V);
 		KEY_X = glfwGetKey(window->self, GLFW_KEY_X);
+		KEY_SHIFT = glfwGetKey(window->self, GLFW_KEY_LEFT_SHIFT) || glfwGetKey(window->self, GLFW_KEY_RIGHT_SHIFT);
 
 		if (KEY_A) {
-			if (!LAST_KEY_A) {
+			if ((!LAST_KEY_A) || KEY_SHIFT) {
 				REQUIRE_UPDATE = addPoint(delTri, mousePoint[0]);
 				LAST_KEY_A = KEY_A;
+				fprintf(file_out, "A\n");
+				fflush(file_out);
 			}
 		}
 		else {
 			LAST_KEY_A = KEY_A;
 		}
 		if (KEY_D) {
-			if (!LAST_KEY_D) {
+			if ((!LAST_KEY_D) || KEY_SHIFT) {
 				REQUIRE_UPDATE = deletePoint(delTri, mousePoint[0]);
 				LAST_KEY_D = KEY_D;
+				fprintf(file_out, "D\n");
+				fflush(file_out);
 			}
 		}
 		else {
@@ -1004,6 +998,8 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 			idx = getPointIndex(delTri, mousePoint[0]);
 			updatePointAtIndex(delTri, idx, mousePoint[0]);
 			REQUIRE_UPDATE = 1;
+			fprintf(file_out, "S\n");
+			fflush(file_out);
 		}
 		else {
 			idx = -1;
@@ -1012,6 +1008,8 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 			if (!LAST_KEY_F) {
 				FAST = !FAST;
 				LAST_KEY_F = KEY_F;
+				fprintf(file_out, "F\n");
+				fflush(file_out);
 			}
 		}
 		else {
@@ -1022,6 +1020,8 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 				VORONOI = !VORONOI;
 				LAST_KEY_V = KEY_V;
 				REQUIRE_UPDATE = 1;
+				fprintf(file_out, "V\n");
+				fflush(file_out);
 			}
 		}
 		else {
@@ -1162,6 +1162,8 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	if (voronoiCenters != NULL) free(voronoiCenters);
 	if (voronoiNeighbors != NULL) free(voronoiNeighbors);
 	if (voronoiLines != NULL) free(voronoiLines);
+
+	fclose(file_out);
 }
 
 ////////////////////////////
