@@ -9,7 +9,7 @@
 /*
  * Allocates and returns a DelaunayTriangulation structure from a set of n points.
  *
- * points: 		the n x 2 array of points (x, y)
+ * points: 		the n x 2 array of distinct points (x, y)
  * n:			the number of points
  *
  * returns:		a new DelaunayTriangulation structure
@@ -32,6 +32,12 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
 	return delTri;
 }
 
+/*
+ * Resets a DelaunayTriangulation so that a new triangulation can safely be done.
+ * Must be run whenever you modify the points.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ */
 void resetDelaunayTriangulation(DelaunayTriangulation *delTri) {
 	if (delTri->edges != NULL) {
 		free(delTri->edges);
@@ -58,6 +64,15 @@ void resetDelaunayTriangulation(DelaunayTriangulation *delTri) {
 	delTri->success = 0;
 }
 
+/*
+ * Returns the index of the point in the DelaunayTriangulation which is the
+ * closest to a given point.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * point:		the point to find
+ *
+ * returns:		the index of the closest point, -1 if cannot find any point
+ */
 GLsizei getPointIndex(DelaunayTriangulation *delTri, GLfloat point[2]) {
 	if (delTri->n_points == 0) {
 		return -1;
@@ -82,6 +97,15 @@ GLsizei getPointIndex(DelaunayTriangulation *delTri, GLfloat point[2]) {
 	return closest_idx;
 }
 
+/*
+ * Returns the distance to the point in the DelaunayTriangulation which is the
+ * closest to a given point.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * point:		the point to compare
+ *
+ * returns:		the distance to the closest point
+ */
 GLfloat getDistanceToClosestPoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
 	GLsizei idx = getPointIndex(delTri, point);
 	if (idx != -1) {
@@ -95,12 +119,27 @@ GLfloat getDistanceToClosestPoint(DelaunayTriangulation *delTri, GLfloat point[2
 	}
 }
 
+/*
+ * Updates the value of a point in the DelaunayTriangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * i_p:			the index of the point to modify
+ * point:		the new point
+ */
 void updatePointAtIndex(DelaunayTriangulation *delTri, GLsizei i_p, GLfloat point[2]) {
 	delTri->points[i_p][0] = point[0];
 	delTri->points[i_p][1] = point[1];
 	resetDelaunayTriangulation(delTri);
 }
 
+/*
+ * Adds a point in the DelaunayTriangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * point:		the point to add
+ *
+ * returns:		1 if point was correctly added, -1 otherwise (means the point is to close to an already existing point)
+ */
 int addPoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
 	if (getDistanceToClosestPoint(delTri, point) <= MIN_DIST) {
 		return 0;
@@ -126,6 +165,14 @@ int addPoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
 	return 1;
 }
 
+/*
+ * Removes a point from the DelaunayTriangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * i_p:			the index of the point to delete
+ *
+ * returns:		1 if point was correctly added, -1 otherwise (if no point to remove)
+ */
 int deletePointAtIndex(DelaunayTriangulation *delTri, GLsizei i_p) {
 	if (delTri->n_points == 0) {
 		return 0;
@@ -150,6 +197,14 @@ int deletePointAtIndex(DelaunayTriangulation *delTri, GLsizei i_p) {
 	return 1;
 }
 
+/*
+ * Removes a point from the DelaunayTriangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * point:		the point to delete
+ *
+ * returns:		1 if point was correctly added, -1 otherwise (if no point to remove)
+ */
 int deletePoint(DelaunayTriangulation *delTri, GLfloat point[2]) {
 	GLsizei idx = getPointIndex(delTri, point);
 	if (idx != -1) {
@@ -302,15 +357,12 @@ void getVoronoiCentersAndNeighbors(DelaunayTriangulation *delTri,
    	for (GLsizei i = 0; i < delTri->n_edges; i++) {
    		e = &(delTri->edges[i]);
    		if ((!e->discarded) && (visited_edges[i] == 0)) {
-			//printf("CMP to next: %d\n", pointCompareEdge(delTri, e->onext->dest, e));
 			// Only one set of edges is on the exterior
 			// Once it's found, no need to check anymore
 			if ((!outside_found) && (pointCompareEdge(delTri, e->onext->dest, e) == 1)) {
-				//printf("FOUND one outside\n");
 				do {
 					// Edge has been now visited
 	   				visited_edges[e->idx] = 1;
-					//printf("Edge %d lies in the exterior\n", e->idx);
 					edges_triangle[e->idx] = n_triangles; // n_triangles = "outside"
 	   				e = e->onext->sym;
 	   			} while (e->idx != i);
@@ -662,24 +714,15 @@ void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsiz
  *			1	if point is on the right
  *			0	if point is colinear with edge
  *		   -1	if point is on the left
- *
  */
 int pointCompareEdge(DelaunayTriangulation *delTri, GLsizei i_p, Edge *e) {
-	//printf("Comparing edges\n");
-	//describeEdge(e);
-	//printf("OUI: %d, (%d, %d)\n", i_p, e->orig, e->dest);
 
 	GLfloat *point, *orig, *dest, det;
 	point = delTri->points[i_p];
-	//printf("MEGUSTA\n");
 	orig = delTri->points[e->orig];
 	dest = delTri->points[e->dest];
 
-	//printf("LOL\n");
-
 	det = (orig[0] - point[0]) * (dest[1] - point[1]) - (orig[1] - point[1]) * (dest[0] - point[0]);
-
-	//printf("COMP DONE\n");
 
 	return (det>0) - (det<0);
 }
@@ -710,10 +753,6 @@ void triangulateDT(DelaunayTriangulation *delTri) {
 
 	// Sort points by x coordinates then by y coordinate.
 	qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
-
-	for(GLsizei i=0; i < delTri->n_points; i++) {
-		//printf("Point = (%.4f, %.4f)\n", delTri->points[i][0], delTri->points[i][1]);
-	}
 
 	/// Starts the triangulation using a divide and conquer approach.
 	Edge *l, *r;
@@ -873,11 +912,24 @@ void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge
 // Begin: Drawing functions //
 //////////////////////////////
 
+/*
+ * Returns the position of the mouse in the x, y coordinates.
+ *
+ * window:		the window
+ * mouse_pos:	the preallocated array that will contain the position
+ */
 void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]) {
 	mouse_pos[0] = (window->cursorPos[0] - window->param.translate[0]);
 	mouse_pos[1] = (window->cursorPos[1] - window->param.translate[1]);
 }
 
+/*
+ * Provides quite a few tools to visualize the DelaunayTriangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * window:		the window
+ * total_time:	the total time the animation should approximatively last
+ */
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window, double total_time) {
 	// Information text
 	bov_text_t* text = bov_text_new(
@@ -921,11 +973,6 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	bov_points_set_width(linesDraw, 0.004);
 	bov_points_set_outline_color(linesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
 	bov_points_set_outline_width(linesDraw, .002);
-
-	/*
-	for(int i = 0; i < n_points; i++) {
-		printf("(%.4f, %.4f)\n", points[i][0], points[i][1]);
-	}*/
 
 	// If DelaunayTriangulation was computed, will display it
 	if (delTri->success) {
@@ -1195,11 +1242,8 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 			if (SHOW_POINTS) bov_points_draw(window, pointsDraw, 0, BOV_TILL_END);
 			bov_points_draw(window, mouseDraw, 0, 1);
 		}
-		//printf("UPDATE\n");
-		//bov_window_screenshot(window, "test.ppm");
 
 		// 3. Adjust text place and boldness
-
 
 		double wtime = bov_window_get_time(window);
 
@@ -1232,6 +1276,17 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 }
 
 
+/*
+ * Re-Draws the DelaunayTriangulation points and lines.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * window:		the window
+ * linesPoints:	the preallocated array that will all the lines points, be sure that it contains enough space for all the lines!
+ * pointsDraw:	the structure used to draw the points
+ * linesDraw:	the structure used to draw the lines
+ * FAST:		if 1, will use fast drawing
+ * sleep:		the sleep time in microseconds after calling the function
+ */
 void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
 						 GLfloat linesPoints[][2],
 						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
@@ -1240,7 +1295,6 @@ void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
 	if (bov_window_should_close(window)) return;
 	// Get new lines
 	GLsizei n_lines = getDelaunayTriangulationNumberOfLines(delTri);
-	//linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
 
 
 	getDelaunayTriangulationLines(delTri, linesPoints, n_lines);
@@ -1266,6 +1320,12 @@ void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
  * This function should be the main function which will all the other sub-functions.
  *
  * delTri: 		the DelaunayTriangulation structure
+ * window:		the window
+ * linesPoints:	the preallocated array that will all the lines points, be sure that it contains enough space for all the lines!
+ * pointsDraw:	the structure used to draw the points
+ * linesDraw:	the structure used to draw the lines
+ * FAST:		if 1, will use fast drawing
+ * sleep:		the sleep time in microseconds after calling the function
  */
 void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *window,
 						 GLfloat linesPoints[][2],
@@ -1298,7 +1358,12 @@ void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *windo
  * end:			the (excluded) end index of the slice
  * el:			an Edge structure pointer for the left edge
  * er:			an Edge structure pointer for the right edge
- *
+ * window:		the window
+ * linesPoints:	the preallocated array that will all the lines points, be sure that it contains enough space for all the lines!
+ * pointsDraw:	the structure used to draw the points
+ * linesDraw:	the structure used to draw the lines
+ * FAST:		if 1, will use fast drawing
+ * sleep:		the sleep time in microseconds after calling the function
  */
 void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er, bov_window_t *window,
 						    GLfloat linesPoints[][2],
