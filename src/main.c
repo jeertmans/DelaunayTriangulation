@@ -156,14 +156,15 @@ int main(int argc, char *argv[])
 			printf("ERROR: File %s not found\n", options.i);
 			exit(EXIT_FAILURE);
 		}
-		if (fscanf(file_in, "%d", &n_points) != 1) {
+		char useless[256];
+		if (fscanf(file_in, "%d%[^\n]\n", &n_points, useless) != 1) {
 			printf("ERROR: First line doesn't match  %%d format\n");
 		}
 
 		points = malloc(sizeof(points[0]) * n_points);
 
 		for (GLsizei i = 0; i < n_points; i++) {
-			if (fscanf(file_in, "%lf%lf", &x, &y) != 2) {
+			if (fscanf(file_in, "%lf %lf", &x, &y) != 2) {
 				printf("ERROR: Line %d could not parse x[%d], y[%d]\n", i+1, i, i);
 				exit(EXIT_FAILURE);
 			}
