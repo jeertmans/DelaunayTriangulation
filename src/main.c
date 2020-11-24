@@ -1,25 +1,29 @@
 #include "inputs.h"
-#include "geometry_structure.h"
 #include "delaunay.h"
 #include <time.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
+#endif
 #include <libgen.h>
 #include <errno.h>
 #include <string.h>
 #include <getopt.h>
 
-#define OPTSTR "vi:i:o:n:p:s:a:b:di:h"
-#define USAGE_FMT  "%s [-param value] ...\n\
+#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:h"
+#define USAGE_FMT  "%s [-param value=default_value] ...\n\
 All the parameters below are optionnal:\n\
-\t[-v verbose] adds some verbosity to the program execution\n\
-\t[-i input_file] if present, will read points from this file where first line must be the number of points, and the next lines must match format %%lf%%lf\n\
-\t[-o output_file]\n\
-\t[-n number_of_points] number of random points\n\
-\t[-p random_process] normal, uniform(-circle), or polygon\n\
-\t[-s smoothing_factor] smoothing applied on random polygon \n\
-\t[-a x_axis] x span (double) when generating uniform(-circle) random points\n\
-\t[-b y_axis] y span (double) when generating uniform(-circle) random points\n\
-\t[-d disable_drawing] disable drawing\n\
+\t[-v verbose=0] adds some verbosity to the program execution\n\
+\t[-i input_file=NULL] if present, will read points from this file where first line must be the number of points, and the next lines must match format %%lf%%lf\n\
+\t[-o output_file=NULL] if present, will save the last status of the DelaunayTriangulation, where the first line will contain \"(n_points, n_lines_points)\", then all the points (first the points, and the line points)\n\
+\t[-n number_of_points=500] number of random points\n\
+\t[-p random_process=normal] normal, uniform(-circle), or polygon\n\
+\t[-s smoothing_factor=4] smoothing applied on random polygon \n\
+\t[-a x_axis=1] x span (double) when generating uniform(-circle) random points\n\
+\t[-b y_axis=1] y span (double) when generating uniform(-circle) random points\n\
+\t[-t total_time=5] estimated total time (in seconds) for the animation, keep in mind that speed is limited by the refresh time\n\
+\t[-d disable_drawing=0] disables drawing\n\
 \t[-h] displays help and exits\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"
@@ -39,6 +43,7 @@ typedef struct options_t {
 	char *p;
 	double a;
 	double b;
+	double t;
 	int d;
 } options_t;
 
@@ -57,6 +62,7 @@ int main(int argc, char *argv[])
 		"normal",	// Random process
 		1.0,		// By default, will generate points
 		1.0,		// in a perfect square (or circle)
+		5e6,		// Total animation time in micro seconds
 		0,			// By default, we draw
 	};
 
@@ -79,7 +85,7 @@ int main(int argc, char *argv[])
 				}
 				else {
 					printf("Unknown random process: %s\n"
-						   "please choose one among:\n"
+						   "Please choose one among:\n"
 						   "\t- normal\n"
 						   "\t- uniform\n"
 						   "\t- uniform-circle\n"
@@ -104,6 +110,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'b':
 				options.b = strtod(optarg, NULL);
+				break;
+			case 't':
+				options.t = strtod(optarg, NULL) * 1e6;
 				break;
 			case 'd':
 				options.d = 1;
@@ -145,6 +154,7 @@ int main(int argc, char *argv[])
 		FILE *file_in = fopen(options.i, "r");
 		if (file_in == NULL) {
 			printf("ERROR: File %s not found\n", options.i);
+			exit(EXIT_FAILURE);
 		}
 		if (fscanf(file_in, "%d", &n_points) != 1) {
 			printf("ERROR: First line doesn't match  %%d format\n");
@@ -184,7 +194,7 @@ int main(int argc, char *argv[])
 			random_polygon(points, n_points, options.s);
 		}
 	}
-#if 1
+
 	if (options.v) printf("[STEP 2] DelaunayTriangulation\n");
 
 	DelaunayTriangulation *delTri;
@@ -213,9 +223,9 @@ int main(int argc, char *argv[])
 
 	if (!options.d) {
 		bov_window_t* window = bov_window_new(-1, 1, "DelaunayTriangulation - Jérome Eertmans");
-		//glDisable(GL_CULL_FACE);
+
 		bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
-		drawDelaunayTriangulation(delTri, window);
+		drawDelaunayTriangulation(delTri, window, options.t);
 		bov_window_delete(window);
 	}
 	else {
@@ -226,29 +236,21 @@ int main(int argc, char *argv[])
 
 	if (options.v) describeDelaunayTriangulation(delTri);
 
-	freeDelaunayTriangulation(delTri);
-	if (options.v) printf("DelaunayTriangulation structure freed.\n");
-#else
+	if (options.o != NULL) {
+		FILE *file_out = fopen(options.o, "w");
 
-	bov_points_t *coordDraw = bov_points_new(coord, nPoints, GL_STATIC_DRAW);
-	bov_points_set_color(coordDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
-	bov_points_set_outline_color(coordDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
+		if (file_out == NULL) {
+			printf("ERROR: Couldn't open file %s in write mode.\n", options.o);
+		}
 
-	while(!bov_window_should_close(window)){
-		bov_points_set_width(coordDraw, 0.003);
-		bov_points_set_outline_width(coordDraw, 0.002);
+		fsaveDelaunayTriangulation(delTri, file_out);
 
-
-		// points_set_width(coordDraw, 0.003);
-		bov_points_set_outline_width(coordDraw, -1.);
-		bov_points_draw(window, coordDraw, 0, nPoints);
-
-		bov_window_update(window);
+		fclose(file_out);
 	}
 
-	bov_points_delete(coordDraw);
-	//free(coord);
-#endif
+	freeDelaunayTriangulation(delTri);
+	if (options.v) printf("DelaunayTriangulation structure freed.\n");
+
 	free(points);
 
 	return EXIT_SUCCESS;

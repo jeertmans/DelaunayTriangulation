@@ -396,6 +396,35 @@ void getVoronoiLines(DelaunayTriangulation *delTri,
 
 }
 
+/*
+ * Save the last DelaunayTriangulation status in the file.
+ * This will contains the points in the triangulation and, if success, the points
+ * forming all the lines in the triangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ * file_out:	the output file (already open)
+ */
+void fsaveDelaunayTriangulation(DelaunayTriangulation *delTri, FILE* file_out) {
+	GLsizei n_lines_points = 2 * getDelaunayTriangulationNumberOfLines(delTri);
+
+	fprintf(file_out, "%d %d\n", delTri->n_points, n_lines_points);
+
+	GLsizei i = 0;
+
+	for (i = 0; i < delTri->n_points; i++) {
+		fprintf(file_out, "%lf %lf\n", delTri->points[i][0], delTri->points[i][1]);
+	}
+
+	GLfloat (*linesPoints)[2] = malloc(sizeof(linesPoints[0]) * n_lines_points);
+	getDelaunayTriangulationLines(delTri, linesPoints, n_lines_points / 2);
+
+	for (i = 0; i < n_lines_points; i++) {
+		fprintf(file_out, "%lf %lf\n", linesPoints[i][0], linesPoints[i][1]);
+	}
+
+	if (linesPoints != NULL) free(linesPoints);
+}
+
 ////////////////////////////////////////////////
 // End: DelaunayTriangulation structure utils //
 ////////////////////////////////////////////////
@@ -682,8 +711,6 @@ void triangulateDT(DelaunayTriangulation *delTri) {
 	// Sort points by x coordinates then by y coordinate.
 	qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
 
-	// TODO: remove duplicates.
-
 	for(GLsizei i=0; i < delTri->n_points; i++) {
 		//printf("Point = (%.4f, %.4f)\n", delTri->points[i][0], delTri->points[i][1]);
 	}
@@ -851,7 +878,7 @@ void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]) {
 	mouse_pos[1] = (window->cursorPos[1] - window->param.translate[1]);
 }
 
-void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window) {
+void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window, double total_time) {
 	// Information text
 	bov_text_t* text = bov_text_new(
 		(GLubyte[]) {"This plot is interactive!\n"
@@ -859,8 +886,10 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 					 "\xee Hold [SHIFT] while pressing [A/D] to repeat\n"
 					 "\xf8 Hold  [S]   to select a point nearby your cursor and\n"
 					 "              change its location\n"
+					 "\xf8 Press [O]   to show/hide points\n"
 					 "\xf8 Press [V]   to show/hide Voronoi diagram\n"
 		             "\xf8 Press [F]   to switch between fast and pretty drawing\n"
+					 "\xf8 Press [I]   to illustrate each step of the triangulation\n"
 				     "\xf8 Press [X]   to show/hide this text\n"
 				     "\xf8 Press [H]   to show/hide the default help menu\n\n"
 				 	 "\x8a Features using DRAG & DROP may not work correctly\n"
@@ -912,10 +941,13 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	int VORONOI = 0;
 	int REQUIRE_UPDATE = 0;
 	int HIDE_TEXT = 0;
-	int KEY_A, KEY_D, KEY_S, KEY_F, KEY_V, KEY_X;
+	int SHOW_POINTS = 1;
+	int ILLUSTRATE = 0;
+	int KEY_A, KEY_D, KEY_S, KEY_F, KEY_V, KEY_X, KEY_O, KEY_I;
 	int KEY_SHIFT;
-	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F, LAST_KEY_V, LAST_KEY_X;
-	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = LAST_KEY_V = LAST_KEY_X = 0;
+	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F, LAST_KEY_V, LAST_KEY_X, LAST_KEY_O, LAST_KEY_I;
+	LAST_KEY_O = 0;
+	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = LAST_KEY_V = LAST_KEY_X = LAST_KEY_I = 0;
 
 	int idx = -1;
 
@@ -947,6 +979,10 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	// Write keystrokes in a file
 
 	FILE *file_out = fopen("data/.keys.txt", "w");
+	if (file_out == NULL) {
+		printf("Warning: could not open file data/.keys.txt.\n"
+			   "Make sure to run this program from the project directory to enable keystrokes saving.\n");
+	}
 
 
 	while(!bov_window_should_close(window)){
@@ -958,14 +994,18 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		KEY_F = glfwGetKey(window->self, GLFW_KEY_F);
 		KEY_V = glfwGetKey(window->self, GLFW_KEY_V);
 		KEY_X = glfwGetKey(window->self, GLFW_KEY_X);
+		KEY_O = glfwGetKey(window->self, GLFW_KEY_O);
+		KEY_I = glfwGetKey(window->self, GLFW_KEY_I);
 		KEY_SHIFT = glfwGetKey(window->self, GLFW_KEY_LEFT_SHIFT) || glfwGetKey(window->self, GLFW_KEY_RIGHT_SHIFT);
 
 		if (KEY_A) {
 			if ((!LAST_KEY_A) || KEY_SHIFT) {
 				REQUIRE_UPDATE = addPoint(delTri, mousePoint[0]);
 				LAST_KEY_A = KEY_A;
-				fprintf(file_out, "A\n");
-				fflush(file_out);
+				if (file_out != NULL) {
+					fprintf(file_out, "A\n");
+					fflush(file_out);
+				}
 			}
 		}
 		else {
@@ -975,8 +1015,10 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 			if ((!LAST_KEY_D) || KEY_SHIFT) {
 				REQUIRE_UPDATE = deletePoint(delTri, mousePoint[0]);
 				LAST_KEY_D = KEY_D;
-				fprintf(file_out, "D\n");
-				fflush(file_out);
+				if (file_out != NULL) {
+					fprintf(file_out, "D\n");
+					fflush(file_out);
+				}
 			}
 		}
 		else {
@@ -986,8 +1028,10 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 			idx = getPointIndex(delTri, mousePoint[0]);
 			updatePointAtIndex(delTri, idx, mousePoint[0]);
 			REQUIRE_UPDATE = 1;
-			fprintf(file_out, "S\n");
-			fflush(file_out);
+			if (file_out != NULL) {
+				fprintf(file_out, "S\n");
+				fflush(file_out);
+			}
 		}
 		else {
 			idx = -1;
@@ -1008,8 +1052,10 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 				VORONOI = !VORONOI;
 				LAST_KEY_V = KEY_V;
 				REQUIRE_UPDATE = 1;
-				fprintf(file_out, "V\n");
-				fflush(file_out);
+				if (file_out != NULL) {
+					fprintf(file_out, "V\n");
+					fflush(file_out);
+				}
 			}
 		}
 		else {
@@ -1023,6 +1069,35 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		}
 		else {
 			LAST_KEY_X = KEY_X;
+		}
+		if (KEY_O) {
+			if (!LAST_KEY_O) {
+				SHOW_POINTS = !SHOW_POINTS;
+				LAST_KEY_O = KEY_O;
+			}
+		}
+		else {
+			LAST_KEY_O = KEY_O;
+		}
+		if (KEY_I) {
+			if (!LAST_KEY_I) {
+				LAST_KEY_I = KEY_I;
+				ILLUSTRATE = 1;
+			}
+		}
+		else {
+			LAST_KEY_I = KEY_I;
+		}
+
+		// 0. We required illustration mode
+
+		if (ILLUSTRATE) {
+			resetDelaunayTriangulation(delTri);
+			// Trying to make the sleep time % to the inverse of the number of edges
+			int sleep = (int) (total_time / (delTri->n_edges_max));
+			triangulateDTIllustrated(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+
+			ILLUSTRATE = 0;
 		}
 
 		// 1.A If key bindings required an update in the drawing
@@ -1113,11 +1188,11 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 			}
 		}
 		if (FAST) {
-			bov_fast_points_draw(window, pointsDraw, 0, BOV_TILL_END);
+			if (SHOW_POINTS) bov_fast_points_draw(window, pointsDraw, 0, BOV_TILL_END);
 			bov_fast_points_draw(window, mouseDraw, 0, 1);
 		}
 		else {
-			bov_points_draw(window, pointsDraw, 0, BOV_TILL_END);
+			if (SHOW_POINTS) bov_points_draw(window, pointsDraw, 0, BOV_TILL_END);
 			bov_points_draw(window, mouseDraw, 0, 1);
 		}
 		//printf("UPDATE\n");
@@ -1125,10 +1200,13 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 
 		// 3. Adjust text place and boldness
 
-		text_parameters.pos[1] = bov_window_get_yres(window) - 30 ;
-		bov_text_set_param(text, text_parameters);
 
 		double wtime = bov_window_get_time(window);
+
+		text_parameters.pos[1] = bov_window_get_yres(window) - 30 ;
+		text_parameters.fillColor[0] = 0.35 * sin(2 * wtime) + 0.35;
+		bov_text_set_param(text, text_parameters);
+
 		bov_text_set_boldness(text, 0.3 * sin(2 * wtime) + 0.3);
 
 		if (!HIDE_TEXT) bov_text_draw(window, text);
@@ -1150,7 +1228,223 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	if (voronoiNeighbors != NULL) free(voronoiNeighbors);
 	if (voronoiLines != NULL) free(voronoiLines);
 
-	fclose(file_out);
+	if (file_out != NULL) fclose(file_out);
+}
+
+
+void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
+						 GLfloat linesPoints[][2],
+						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						 int FAST, int sleep) {
+
+	if (bov_window_should_close(window)) return;
+	// Get new lines
+	GLsizei n_lines = getDelaunayTriangulationNumberOfLines(delTri);
+	//linesPoints = malloc(sizeof(linesPoints[0]) * 2 * n_lines);
+
+
+	getDelaunayTriangulationLines(delTri, linesPoints, n_lines);
+
+	// Update lines
+	bov_points_update(linesDraw, linesPoints, 2 * n_lines);
+
+	if (FAST) {
+		bov_fast_points_draw(window, pointsDraw, 0, BOV_TILL_END);
+		bov_fast_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+	}
+	else {
+		bov_points_draw(window, pointsDraw, 0, BOV_TILL_END);
+		bov_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+	}
+
+	bov_window_update(window);
+	usleep(sleep);
+}
+
+/*
+ * Triangulates a set of points using the DelaunayTriangulation.
+ * This function should be the main function which will all the other sub-functions.
+ *
+ * delTri: 		the DelaunayTriangulation structure
+ */
+void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *window,
+						 GLfloat linesPoints[][2],
+						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						 int FAST, int sleep) {
+	if (delTri->success) {
+	return;
+	}
+	if (delTri->n_points < 2) {
+		return;
+	}
+
+	// Sort points by x coordinates then by y coordinate.
+	qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
+
+	reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+
+	/// Starts the triangulation using a divide and conquer approach.
+	Edge *l, *r;
+	triangulateIllustrated(delTri, 0, delTri->n_points, &l, &r, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+	delTri->success = 1;
+}
+
+/*
+ * Recursive function used by the triangulateDT function in order to solve
+ * the triangulation problem using a divide and conquer approach.
+ *
+ * delTri: 		the DelaunayTriangulation structure
+ * start:		the start index of the slice
+ * end:			the (excluded) end index of the slice
+ * el:			an Edge structure pointer for the left edge
+ * er:			an Edge structure pointer for the right edge
+ *
+ */
+void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er, bov_window_t *window,
+						    GLfloat linesPoints[][2],
+						    bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						    int FAST, int sleep) {
+	GLsizei n = end - start;
+	if (n == 2) {
+		// Creates an edge connecting the two points (start), (start + 1)
+		Edge *e = addEdge(delTri, start, start + 1);
+		*el = e;
+		*er = e->sym;
+		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		return;
+	}
+	else if (n == 3) {
+		Edge *a, *b, *c;
+
+		// Creates two edges
+		// - a, connecting (start), 	(start + 1)
+		// - b, connecting (start + 1), (start + 2)
+		a = addEdge(delTri, start, 		start + 1);
+		b = addEdge(delTri, start + 1, 	start + 2);
+		spliceEdges(delTri, a->sym, b);
+
+		int cmp = pointCompareEdge(delTri, start + 2, a);
+
+		// Now will close the triangle formed by the three points
+		if (cmp == 1) {
+			c = connectEdges(delTri, b, a);
+			*el = a;
+			*er = b->sym;
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			return;
+		}
+		else if (cmp == -1) {
+			c = connectEdges(delTri, b, a);
+			*el = c->sym;
+			*er = c;
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			return;
+		}
+		else {
+			*el = a;
+			*er = b->sym;
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			return;
+		}
+	}
+	else {
+		// Recusively calls this function on half the points
+		GLsizei m = (n + 1) / 2;
+		Edge *ldo, *ldi, *rdi, *rdo;
+		triangulateIllustrated(delTri, start, 		start + m, 	&ldo, &ldi, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		triangulateIllustrated(delTri, start + m, 	end, 		&rdi, &rdo, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+
+		// Computes the upper common tangent of left and right edges
+		while (1) {
+			if 		(pointCompareEdge(delTri, rdi->orig, ldi) ==  1) {
+				ldi = ldi->sym->onext;
+				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			}
+			else if (pointCompareEdge(delTri, ldi->orig, rdi) == -1) {
+				rdi = rdi->sym->oprev;
+				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			}
+			else {
+				break;
+			}
+		}
+
+		Edge *base;
+
+		// Creates an edge between rdi.orig and ldi.orig
+		base = connectEdges(delTri, ldi->sym, rdi);
+		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+
+		// Ajdusts ldo and rdo
+		if (ldi->orig == ldo->orig) {
+			ldo = base;
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		}
+		if (rdi->orig == rdo->orig) {
+			rdo = base->sym;
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		}
+
+		Edge *lcand, *rcand, *tmp;
+		int v_rcand, v_lcand;
+
+		// We merge both parts
+		while (1) {
+			// Locates the first right and left points to be encountered
+			// by the diving bubble
+
+			rcand = base->sym->onext;
+			lcand = base->oprev;
+
+			v_rcand = (pointCompareEdge(delTri, rcand->dest, base) == 1);
+			v_lcand = (pointCompareEdge(delTri, lcand->dest, base) == 1);
+			if (!(v_rcand || v_lcand)) {
+				// Merge is done
+				break;
+			}
+			// Deletes right edges that fail the circle test
+			if (v_rcand) {
+				while ((pointCompareEdge(delTri, rcand->onext->dest, base) == 1) &&
+					   (pointInCircle(delTri, rcand->onext->dest, base->dest, base->orig, rcand->dest))
+				   )
+					   {
+						   tmp = rcand->onext;
+						   deleteEdge(delTri, rcand);
+						   rcand = tmp;
+						   reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+					   }
+			}
+			// Deletes left edges that fail the circle test
+			if (v_lcand) {
+				while ((pointCompareEdge(delTri, lcand->oprev->dest, base) == 1) &&
+					   (pointInCircle(delTri, lcand->oprev->dest, base->dest, base->orig, lcand->dest))
+				   )
+					   {
+						   tmp = lcand->oprev;
+						   deleteEdge(delTri, lcand);
+						   lcand = tmp;
+						   reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+					   }
+			}
+
+			if ((!v_rcand) ||
+				(v_rcand && pointInCircle(delTri, lcand->dest, rcand->dest, rcand->orig, lcand->orig))
+			) {
+
+				tmp = connectEdges(delTri, lcand, base->sym);
+				base = tmp;
+				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			}
+			else {
+				tmp = connectEdges(delTri, base->sym, rcand->sym);
+				base = tmp;
+				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			}
+		}
+		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		*el = ldo;
+		*er = rdo;
+	}
 }
 
 ////////////////////////////

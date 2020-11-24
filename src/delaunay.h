@@ -3,6 +3,11 @@
 
 #include "BOV.h"
 #include "math.h"
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
 
 #define MIN_DIST 1E-10 // Minimim distance between two points (used to avoid placing multiple points at the same location)
 
@@ -45,6 +50,7 @@ void getDelaunayTriangulationLines(DelaunayTriangulation *delTri, GLfloat lines[
 GLsizei getNumberOfTriangles(DelaunayTriangulation *delTri);
 void getVoronoiCentersAndNeighbors(DelaunayTriangulation *delTri, GLfloat centers[][2], GLsizei neighbors[][3], GLsizei n_triangles);
 void getVoronoiLines(DelaunayTriangulation *delTri, GLfloat centers[][2], GLsizei neighbors[][3], GLfloat lines[][2], GLsizei n_triangles);
+void fsaveDelaunayTriangulation(DelaunayTriangulation *delTri, FILE* file_out) ;
 
 Edge* addEdge(DelaunayTriangulation *delTri, GLsizei orig, GLsizei dest);
 void describeEdge(Edge *e);
@@ -61,6 +67,18 @@ void triangulateDT(DelaunayTriangulation *delTri);
 void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er);
 
 void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]);
-void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window);
+void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window, double total_time);
+void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
+						 GLfloat linesPoints[][2],
+						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						 int FAST, int sleep);
+void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *window,
+						 GLfloat linesPoints[][2],
+						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						 int FAST, int sleep);
+void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er, bov_window_t *window,
+						    GLfloat linesPoints[][2],
+						    bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						    int FAST, int sleep);
 
 #endif
