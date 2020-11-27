@@ -8,6 +8,7 @@ add_executable(${EXEC}
                "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"
                "${CMAKE_CURRENT_SOURCE_DIR}/src/inputs.c"
                "${CMAKE_CURRENT_SOURCE_DIR}/src/delaunay.c"
+               "${CMAKE_CURRENT_SOURCE_DIR}/src/predicates.c"
                # you can add other source file here !
                )
 

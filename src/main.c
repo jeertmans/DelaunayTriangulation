@@ -11,7 +11,7 @@
 #include <string.h>
 #include <getopt.h>
 
-#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:h"
+#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:r :h"
 #define USAGE_FMT  "%s [-param value=default_value] ...\n\
 All the parameters below are optionnal:\n\
 \t[-v verbose=0] adds some verbosity to the program execution\n\
@@ -24,6 +24,7 @@ All the parameters below are optionnal:\n\
 \t[-b y_axis=1] y span (double) when generating uniform(-circle) random points\n\
 \t[-t total_time=5] estimated total time (in seconds) for the animation, keep in mind that speed is limited by the refresh time\n\
 \t[-d disable_drawing=0] disables drawing\n\
+\t[-r remove_duplicates=1] removes duplicated points (will add overhead), you can disable it to improve performances\n\
 \t[-h] displays help and exits\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"
@@ -45,6 +46,7 @@ typedef struct options_t {
 	double b;
 	double t;
 	int d;
+	int r;
 } options_t;
 
 
@@ -64,6 +66,7 @@ int main(int argc, char *argv[])
 		1.0,		// in a perfect square (or circle)
 		5e6,		// Total animation time in micro seconds
 		0,			// By default, we draw
+		1,			// We remove duplicates
 	};
 
 	// Inspired from:
@@ -116,6 +119,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'd':
 				options.d = 1;
+				break;
+			case 'r':
+				options.r = atoi(optarg);
 				break;
 			case 'v':
 				options.v = 1;
@@ -202,7 +208,7 @@ int main(int argc, char *argv[])
 
 	clock_t begin = clock();
 
-	delTri = initDelaunayTriangulation(points, n_points);
+	delTri = initDelaunayTriangulation(points, n_points, options.r);
 
 	if (options.v) {
 		printf("DelaunayTriangulation structure was allocated in %.6f s.\n",

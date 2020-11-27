@@ -3,12 +3,15 @@
 
 #include "BOV.h"
 #include "math.h"
+#include "predicates.h"
+
 #ifdef _WIN32
 #include <Windows.h>
 #else
 #include <unistd.h>
 #endif
 
+#define ROBUST 1
 #define MIN_DIST 1E-10 // Minimim distance between two points (used to avoid placing multiple points at the same location)
 
 
@@ -36,7 +39,7 @@ typedef struct DelaunayTriangulation {
 
 } DelaunayTriangulation;
 
-DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n);
+DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n, int remove_duplicates);
 void resetDelaunayTriangulation(DelaunayTriangulation *delTri);
 GLsizei getPointIndex(DelaunayTriangulation *delTri, GLfloat point[2]);
 GLfloat getDistanceToClosestPoint(DelaunayTriangulation *delTri, GLfloat point[2]);

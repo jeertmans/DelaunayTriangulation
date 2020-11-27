@@ -9,12 +9,18 @@
 /*
  * Allocates and returns a DelaunayTriangulation structure from a set of n points.
  *
- * points: 		the n x 2 array of distinct points (x, y)
- * n:			the number of points
+ * points: 					the n x 2 array of distinct points (x, y)
+ * n:						the number of points
+ * re;remove_duplicates:	if set, will remove the duplicated poits
  *
- * returns:		a new DelaunayTriangulation structure
+ * returns:					a new DelaunayTriangulation structure
  */
-DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n) {
+DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n, int remove_duplicates) {
+
+#if ROBUST
+	exactinit();
+#endif
+
     DelaunayTriangulation *delTri = malloc(sizeof(DelaunayTriangulation));
 
     // Points
@@ -24,6 +30,38 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n)
 	for (GLsizei i = 0; i < n; i++) {
 		delTri->points[i][0] = points[i][0];
 		delTri->points[i][1] = points[i][1];
+	}
+
+	if (remove_duplicates) {
+		qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
+
+		GLsizei c = 1;
+		for (GLsizei i = 1; i < delTri->n_points; i++) {
+			while ((delTri->points[i][0] == delTri->points[c - 1][0]) && (delTri->points[i][1] == delTri->points[c - 1][1])) {
+				if (i < delTri->n_points - 1) {
+					i++;
+				}
+				else {
+					c--;
+					break;
+				}
+			}
+			delTri->points[c][0] = delTri->points[i][0];
+			delTri->points[c][1] = delTri->points[i][1];
+			c++;
+		}
+
+		GLfloat (*p)[2] = malloc(sizeof(delTri->points[0]) * c);
+		if (p == NULL) printf("ERROR: Couldn't reallocate memory for points after removing duplicates\n");
+
+		for (GLsizei i = 0; i < c; i++) {
+			p[i][0] = delTri->points[i][0];
+			p[i][1] = delTri->points[i][1];
+		}
+
+		free(delTri->points);
+		delTri->points = p;
+		delTri->n_points = c;
 	}
 
 	delTri->edges = NULL;
@@ -316,7 +354,7 @@ GLsizei getNumberOfTriangles(DelaunayTriangulation *delTri) {
 		}
 	}
 
-	free(visited_edges);
+	if (visited_edges != NULL) free(visited_edges);
 
 	return n_triangles - 1; // Remove the "outside"
 
@@ -399,8 +437,8 @@ void getVoronoiCentersAndNeighbors(DelaunayTriangulation *delTri,
 	}
 
 	// Free allocated memory
-   	free(visited_edges);
-	free(edges_triangle);
+   	if (visited_edges != NULL) free(visited_edges);
+	if (edges_triangle != NULL) free(edges_triangle);
 
 }
 
@@ -660,6 +698,10 @@ int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsiz
 	b = delTri->points[i_b];
 	c = delTri->points[i_c];
 
+#if ROBUST
+	return incircle(a, b, c, point) >= 0;
+#else
+
     GLfloat a1, a2, a3, b1, b2, b3, c1, c2, c3, det;
 
 	a1 = a[0] - point[0]; a2 = a[1] - point[1];
@@ -672,6 +714,7 @@ int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsiz
 
 	det = a1*b2*c3 + a2*b3*c1 + a3*b1*c2 - (a3*b2*c1 + a1*b3*c2 + a2*b1*c3);
     return det <= 0;
+#endif
 }
 
 /*
@@ -722,7 +765,15 @@ int pointCompareEdge(DelaunayTriangulation *delTri, GLsizei i_p, Edge *e) {
 	orig = delTri->points[e->orig];
 	dest = delTri->points[e->dest];
 
+#if ROBUST
+
+	det = -orient2d(orig, dest, point);
+
+#else
+
 	det = (orig[0] - point[0]) * (dest[1] - point[1]) - (orig[1] - point[1]) * (dest[0] - point[0]);
+
+#endif
 
 	return (det>0) - (det<0);
 }
@@ -1166,10 +1217,12 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 
 				if (VORONOI) {
 					// Free old data
+					printf("Voronoi begin\n");
 					if (voronoiCenters != NULL) free(voronoiCenters);
 					if (voronoiNeighbors != NULL) free(voronoiNeighbors);
 					if (voronoiLines != NULL) free(voronoiLines);
 
+					printf("A\n");
 					// Get new Voronoi centers and lines
 					n_triangles = getNumberOfTriangles(delTri);
 
@@ -1180,7 +1233,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 												  voronoiCenters,
 											      voronoiNeighbors,
 											      n_triangles);
-
+					printf("B\n");
 					// Update Voronoi centers
 					bov_points_update(voronoiCentersDraw, voronoiCenters, n_triangles);
 
@@ -1191,8 +1244,9 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 									voronoiNeighbors,
 									voronoiLines,
 									n_triangles);
-
+					printf("C\n");
 					bov_points_update(voronoiLinesDraw, voronoiLines, 3 * 2 * n_triangles);
+					printf("Voronoi end\n");
 
 				}
 			}
