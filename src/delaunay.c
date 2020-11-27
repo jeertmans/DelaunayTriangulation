@@ -990,6 +990,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 					 "\xf8 Hold  [S]   to select a point nearby your cursor and\n"
 					 "              change its location\n"
 					 "\xf8 Press [O]   to show/hide points\n"
+					 "\xf8 Press [L]   to show/hide lines\n"
 					 "\xf8 Press [V]   to show/hide Voronoi diagram\n"
 		             "\xf8 Press [F]   to switch between fast and pretty drawing\n"
 					 "\xf8 Press [I]   to illustrate each step of the triangulation\n"
@@ -1040,11 +1041,12 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	int REQUIRE_UPDATE = 0;
 	int HIDE_TEXT = 0;
 	int SHOW_POINTS = 1;
+	int SHOW_LINES = 1;
 	int ILLUSTRATE = 0;
-	int KEY_A, KEY_D, KEY_S, KEY_F, KEY_V, KEY_X, KEY_O, KEY_I;
+	int KEY_A, KEY_D, KEY_S, KEY_F, KEY_V, KEY_X, KEY_O, KEY_L, KEY_I;
 	int KEY_SHIFT;
-	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F, LAST_KEY_V, LAST_KEY_X, LAST_KEY_O, LAST_KEY_I;
-	LAST_KEY_O = 0;
+	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F, LAST_KEY_V, LAST_KEY_X, LAST_KEY_O, LAST_KEY_L, LAST_KEY_I;
+	LAST_KEY_O = LAST_KEY_L = 0;
 	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = LAST_KEY_V = LAST_KEY_X = LAST_KEY_I = 0;
 
 	int idx = -1;
@@ -1093,6 +1095,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		KEY_V = glfwGetKey(window->self, GLFW_KEY_V);
 		KEY_X = glfwGetKey(window->self, GLFW_KEY_X);
 		KEY_O = glfwGetKey(window->self, GLFW_KEY_O);
+		KEY_L = glfwGetKey(window->self, GLFW_KEY_L);
 		KEY_I = glfwGetKey(window->self, GLFW_KEY_I);
 		KEY_SHIFT = glfwGetKey(window->self, GLFW_KEY_LEFT_SHIFT) || glfwGetKey(window->self, GLFW_KEY_RIGHT_SHIFT);
 
@@ -1177,6 +1180,15 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		else {
 			LAST_KEY_O = KEY_O;
 		}
+		if (KEY_L) {
+			if (!LAST_KEY_L) {
+				SHOW_LINES = !SHOW_LINES;
+				LAST_KEY_L = KEY_L;
+			}
+		}
+		else {
+			LAST_KEY_L = KEY_L;
+		}
 		if (KEY_I) {
 			if (!LAST_KEY_I) {
 				LAST_KEY_I = KEY_I;
@@ -1217,12 +1229,11 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 
 				if (VORONOI) {
 					// Free old data
-					printf("Voronoi begin\n");
 					if (voronoiCenters != NULL) free(voronoiCenters);
 					if (voronoiNeighbors != NULL) free(voronoiNeighbors);
 					if (voronoiLines != NULL) free(voronoiLines);
 
-					printf("A\n");
+
 					// Get new Voronoi centers and lines
 					n_triangles = getNumberOfTriangles(delTri);
 
@@ -1233,7 +1244,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 												  voronoiCenters,
 											      voronoiNeighbors,
 											      n_triangles);
-					printf("B\n");
+
 					// Update Voronoi centers
 					bov_points_update(voronoiCentersDraw, voronoiCenters, n_triangles);
 
@@ -1244,9 +1255,9 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 									voronoiNeighbors,
 									voronoiLines,
 									n_triangles);
-					printf("C\n");
+
 					bov_points_update(voronoiLinesDraw, voronoiLines, 3 * 2 * n_triangles);
-					printf("Voronoi end\n");
+
 
 				}
 			}
@@ -1274,14 +1285,14 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		// 2. Drawing
 		if (delTri->success) {
 			if (FAST) {
-				bov_fast_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+				if (SHOW_LINES) bov_fast_lines_draw(window, linesDraw, 0, BOV_TILL_END);
 				if (VORONOI) {
 					bov_fast_lines_draw(window, voronoiLinesDraw, 0, BOV_TILL_END);
 					bov_fast_points_draw(window, voronoiCentersDraw, 0, BOV_TILL_END);
 				}
 			}
 			else {
-				bov_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+				if (SHOW_LINES) bov_lines_draw(window, linesDraw, 0, BOV_TILL_END);
 				if (VORONOI) {
 					bov_lines_draw(window, voronoiLinesDraw, 0, BOV_TILL_END);
 					bov_points_draw(window, voronoiCentersDraw, 0, BOV_TILL_END);
