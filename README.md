@@ -4,6 +4,7 @@
 - Course: Numerical Geometries (LMECA2710)
 - Algorithm: Delaunay triangulation
 
+<p align="center"> <img src="static/lmeca2170.png" width=300></p>
 
 ## How to use this project
 
