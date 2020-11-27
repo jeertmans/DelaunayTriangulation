@@ -699,7 +699,7 @@ int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsiz
 	c = delTri->points[i_c];
 
 #if ROBUST
-	return incircle(a, b, c, point) >= 0;
+	return incircle(a, b, c, point) > 0;
 #else
 
     GLfloat a1, a2, a3, b1, b2, b3, c1, c2, c3, det;
@@ -713,7 +713,7 @@ int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsiz
 	c3 = c1 * c1 + c2 * c2;
 
 	det = a1*b2*c3 + a2*b3*c1 + a3*b1*c2 - (a3*b2*c1 + a1*b3*c2 + a2*b1*c3);
-    return det <= 0;
+    return det < 0;
 #endif
 }
 

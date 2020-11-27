@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
 		bov_window_delete(window);
 	}
 	else {
-		printf("Drawing step skipped.\n");
+		if (options.v) printf("Drawing step skipped.\n");
 	}
 
 	if (options.v) printf("[STEP 4] Final state\n");
