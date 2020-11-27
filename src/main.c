@@ -31,6 +31,8 @@ All the parameters below are optionnal:\n\
 #define ERR_DO_THE_NEEDFUL "do_the_needful blew up"
 #define DEFAULT_PROGNAME "lmeca2710_project"
 
+#define WHITE_BACKGROUND 1  // Change to 1 to have a white background (might be better to export images)
+
 extern int errno;
 extern char *optarg;
 extern int opterr, optind;
@@ -232,7 +234,11 @@ int main(int argc, char *argv[])
 	if (!options.d) {
 		bov_window_t* window = bov_window_new(-1, 1, "DelaunayTriangulation - Jérome Eertmans");
 
+#if WHITE_BACKGROUND
+		bov_window_set_color(window, (GLfloat[]){1.0f, 1.f, 1.0f, 1.0f});
+#else
 		bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
+#endif
 		drawDelaunayTriangulation(delTri, window, options.t);
 		bov_window_delete(window);
 	}
