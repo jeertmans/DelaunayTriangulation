@@ -11,8 +11,8 @@
 #include <unistd.h>
 #endif
 
-#define ROBUST 1
-#define MIN_DIST 1E-10 // Minimim distance between two points (used to avoid placing multiple points at the same location)
+#define ROBUST 1		// If True, will use robust predicates
+#define MIN_DIST 1E-10 	// Minimim distance between two points (used to avoid placing multiple points at the same location)
 
 
 typedef struct Edge {
