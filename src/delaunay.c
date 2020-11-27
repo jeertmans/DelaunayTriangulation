@@ -32,7 +32,7 @@ DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n,
 		delTri->points[i][1] = points[i][1];
 	}
 
-	if (remove_duplicates) {
+	if ((remove_duplicates) && (delTri->n_points > 1)) {
 		qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
 
 		GLsizei c = 1;

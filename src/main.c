@@ -163,8 +163,9 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		char useless[256];
-		if (fscanf(file_in, "%d%[^\n]\n", &n_points, useless) != 1) {
+		if (fscanf(file_in, "%d%[^\n]\n", &n_points, useless) == 0) {
 			printf("ERROR: First line doesn't match  %%d format\n");
+			exit(EXIT_FAILURE);
 		}
 
 		points = malloc(sizeof(points[0]) * n_points);
