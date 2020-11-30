@@ -11,10 +11,14 @@
 #include <string.h>
 #include <getopt.h>
 
-#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:r :h"
-#define USAGE_FMT  "%s [-param value=default_value] ...\n\
-All the parameters below are optionnal:\n\
-\t[-v verbose=0] adds some verbosity to the program execution\n\
+#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:r:h"
+#define USAGE_FMT  "\
+Delaunay Triangulation.\n\
+Jérome Eertmans, 2020.\n\n\
+Usage:\n\
+\t%s [options] [...]\n\
+Options:\n\
+\t[-v verbose] adds some verbosity to the program execution\n\
 \t[-i input_file=NULL] if present, will read points from this file where first line must be the number of points, and the next lines must match format %%lf%%lf\n\
 \t[-o output_file=NULL] if present, will save the last status of the DelaunayTriangulation, where the first line will contain \"(n_points, n_lines_points)\", then all the points (first the points, and the line points)\n\
 \t[-n number_of_points=500] number of random points\n\
@@ -24,7 +28,7 @@ All the parameters below are optionnal:\n\
 \t[-b y_axis=1] y span (double) when generating uniform(-circle) random points\n\
 \t[-t total_time=20] estimated total time (in seconds) for the animation, keep in mind that speed is limited by the refresh time\n\
 \t[-d disable_drawing=0] disables drawing\n\
-\t[-r remove_duplicates=1] removes duplicated points (will add overhead), you can disable it to improve performances\n\
+\t[-r remove_duplicates] removes duplicated points (will add overhead), you can disable it to improve performances\n\
 \t[-h] displays help and exits\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"

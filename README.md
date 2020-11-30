@@ -11,12 +11,14 @@
 If you want to use the project, you need to first compile it:
 
 ```
+mkdir build     # only required once
 cd build
+cmake ..        # only required once
 make
 cd ..
 ```
 
-Alternatively, you can use `./buid.sh` if you are on a UNIX machine.
+Alternatively, you can use `./buid.sh` if you are on a UNIX machine (please first create the directory and instantiate the cmake).
 
 Then you can execute the program. A variety of parameters is available, please use `-h` flag to see them.
 ```
