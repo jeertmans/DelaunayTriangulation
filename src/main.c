@@ -16,7 +16,14 @@
 Delaunay Triangulation.\n\
 Jérome Eertmans, 2020.\n\n\
 Usage:\n\
-\t%s [options] [...]\n\
+\t./%s [options] [...]\n\
+\tpython3 main.py     [options] [...]\n\
+\tpython3 main.py     -n 10\n\
+\tpython3 main.py     -p uniform-circle -a 2\n\
+\tpython3 main.py     -n 1000000 -d -v -r 0\n\
+\tpython3 main.py     -n 30 -t 5\n\
+\tpython3 main.py     -i input/cowboy.txt\n\
+\n\
 Options:\n\
 \t[-v verbose] adds some verbosity to the program execution\n\
 \t[-i input_file=NULL] if present, will read points from this file where first line must be the number of points, and the next lines must match format %%lf%%lf\n\
@@ -27,8 +34,8 @@ Options:\n\
 \t[-a x_axis=1] x span (double) when generating uniform(-circle) random points\n\
 \t[-b y_axis=1] y span (double) when generating uniform(-circle) random points\n\
 \t[-t total_time=20] estimated total time (in seconds) for the animation, keep in mind that speed is limited by the refresh time\n\
-\t[-d disable_drawing=0] disables drawing\n\
-\t[-r remove_duplicates] removes duplicated points (will add overhead), you can disable it to improve performances\n\
+\t[-d disable_drawing] disables drawing\n\
+\t[-r remove_duplicates=1] removes duplicated points (will add overhead), you can disable it to improve performances\n\
 \t[-h] displays help and exits\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"

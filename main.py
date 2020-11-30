@@ -22,7 +22,7 @@ class MyHandler(FileSystemEventHandler):
     def on_modified(self, event):
         global keys_file
         global on
-        if keys_file is None:
+        if keys_file is None and event.src_path.endswith(".keys.txt"):
             keys_file = open(event.src_path, "r");
 
         key = keys_file.readline().strip()
