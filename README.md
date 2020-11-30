@@ -54,6 +54,8 @@ I edited some files manually to show you what you can do with this program.
 
 <p align="center"> <img src="static/love.png" width="300"></p>
 
+<p align="center"> <img src="static/illustration.gif" width="300"></p>
+
 ## Known issues
 
 In the GUI, using the SHIFT + KEY (i.e. fast repeat of KEY) can cause memory problems.

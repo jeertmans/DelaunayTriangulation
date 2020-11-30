@@ -30,3 +30,6 @@ IF(CMAKE_COMPILER_IS_GNUCC)
     SET(CMAKE_CXX_FLAGS "-O3")
     SET(CMAKE_C_FLAGS "-O3")
 ENDIF(CMAKE_COMPILER_IS_GNUCC)
+
+# Uncomment to add debugging information for valgrind
+#set(CMAKE_BUILD_TYPE Debug)

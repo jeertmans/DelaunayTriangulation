@@ -73,15 +73,16 @@ void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]);
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window, double total_time);
 void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
 						 GLfloat linesPoints[][2],
-						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
-						 int FAST, int sleep);
+						 bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
+						 int FAST, int sleep,
+					 	 int start, int end);
 void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *window,
 						 GLfloat linesPoints[][2],
-						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						 bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
 						 int FAST, int sleep);
 void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er, bov_window_t *window,
 						    GLfloat linesPoints[][2],
-						    bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						    bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
 						    int FAST, int sleep);
 
 #endif

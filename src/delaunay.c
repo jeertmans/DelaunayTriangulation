@@ -1141,8 +1141,10 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 			if (!LAST_KEY_F) {
 				FAST = !FAST;
 				LAST_KEY_F = KEY_F;
-				fprintf(file_out, "F\n");
-				fflush(file_out);
+				if (file_out != NULL) {
+					fprintf(file_out, "F\n");
+					fflush(file_out);
+				}
 			}
 		}
 		else {
@@ -1204,8 +1206,17 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		if (ILLUSTRATE) {
 			resetDelaunayTriangulation(delTri);
 			// Trying to make the sleep time % to the inverse of the number of edges
+
+			// Active points
+		    bov_points_t *activePointsDraw = bov_points_new(delTri->points, delTri->n_points, GL_STATIC_DRAW);
+			bov_points_set_color(activePointsDraw, (GLfloat[4]) {0.0, 1.0, 0.0, 1.0});
+			bov_points_set_outline_color(activePointsDraw, (GLfloat[4]) {0.3, 1., 0.0, 0.25});
+			bov_points_set_width(activePointsDraw, 2 * defaultPointWidth);
+
 			int sleep = (int) (total_time / (delTri->n_edges_max));
-			triangulateDTIllustrated(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			triangulateDTIllustrated(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep);
+
+			bov_points_delete(activePointsDraw);
 
 			ILLUSTRATE = 0;
 		}
@@ -1348,16 +1359,21 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
  * window:		the window
  * linesPoints:	the preallocated array that will all the lines points, be sure that it contains enough space for all the lines!
  * pointsDraw:	the structure used to draw the points
+ * activePointsDraw:	the structure used to draw the active points
  * linesDraw:	the structure used to draw the lines
  * FAST:		if 1, will use fast drawing
  * sleep:		the sleep time in microseconds after calling the function
+ * start:		the start index of the slice
+ * end:			the (excluded) end index of the slice
  */
 void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
 						 GLfloat linesPoints[][2],
-						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
-						 int FAST, int sleep) {
+						 bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
+						 int FAST, int sleep,
+					 	 int start, int end) {
 
 	if (bov_window_should_close(window)) return;
+
 	// Get new lines
 	GLsizei n_lines = getDelaunayTriangulationNumberOfLines(delTri);
 
@@ -1368,12 +1384,14 @@ void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
 	bov_points_update(linesDraw, linesPoints, 2 * n_lines);
 
 	if (FAST) {
-		bov_fast_points_draw(window, pointsDraw, 0, BOV_TILL_END);
 		bov_fast_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+		bov_fast_points_draw(window, pointsDraw, 0, BOV_TILL_END);
+		bov_fast_points_draw(window, activePointsDraw, start, end);
 	}
 	else {
-		bov_points_draw(window, pointsDraw, 0, BOV_TILL_END);
 		bov_lines_draw(window, linesDraw, 0, BOV_TILL_END);
+		bov_points_draw(window, pointsDraw, 0, BOV_TILL_END);
+		bov_points_draw(window, activePointsDraw, start, end);
 	}
 
 	bov_window_update(window);
@@ -1388,13 +1406,14 @@ void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
  * window:		the window
  * linesPoints:	the preallocated array that will all the lines points, be sure that it contains enough space for all the lines!
  * pointsDraw:	the structure used to draw the points
+ * activePointsDraw:	the structure used to draw the active points
  * linesDraw:	the structure used to draw the lines
  * FAST:		if 1, will use fast drawing
  * sleep:		the sleep time in microseconds after calling the function
  */
 void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *window,
 						 GLfloat linesPoints[][2],
-						 bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						 bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
 						 int FAST, int sleep) {
 	if (delTri->success) {
 	return;
@@ -1406,11 +1425,11 @@ void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *windo
 	// Sort points by x coordinates then by y coordinate.
 	qsort(delTri->points, delTri->n_points, 2 * sizeof(GLfloat), compare_points);
 
-	reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+	reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, 0, 0);
 
 	/// Starts the triangulation using a divide and conquer approach.
 	Edge *l, *r;
-	triangulateIllustrated(delTri, 0, delTri->n_points, &l, &r, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+	triangulateIllustrated(delTri, 0, delTri->n_points, &l, &r, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep);
 	delTri->success = 1;
 }
 
@@ -1426,13 +1445,14 @@ void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *windo
  * window:		the window
  * linesPoints:	the preallocated array that will all the lines points, be sure that it contains enough space for all the lines!
  * pointsDraw:	the structure used to draw the points
+ * activePointsDraw:	the structure used to draw the active points
  * linesDraw:	the structure used to draw the lines
  * FAST:		if 1, will use fast drawing
  * sleep:		the sleep time in microseconds after calling the function
  */
 void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er, bov_window_t *window,
 						    GLfloat linesPoints[][2],
-						    bov_points_t *pointsDraw, bov_points_t *linesDraw,
+						    bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
 						    int FAST, int sleep) {
 	GLsizei n = end - start;
 	if (n == 2) {
@@ -1440,7 +1460,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 		Edge *e = addEdge(delTri, start, start + 1);
 		*el = e;
 		*er = e->sym;
-		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 		return;
 	}
 	else if (n == 3) {
@@ -1460,20 +1480,20 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 			c = connectEdges(delTri, b, a);
 			*el = a;
 			*er = b->sym;
-			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 			return;
 		}
 		else if (cmp == -1) {
 			c = connectEdges(delTri, b, a);
 			*el = c->sym;
 			*er = c;
-			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 			return;
 		}
 		else {
 			*el = a;
 			*er = b->sym;
-			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 			return;
 		}
 	}
@@ -1481,18 +1501,18 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 		// Recusively calls this function on half the points
 		GLsizei m = (n + 1) / 2;
 		Edge *ldo, *ldi, *rdi, *rdo;
-		triangulateIllustrated(delTri, start, 		start + m, 	&ldo, &ldi, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
-		triangulateIllustrated(delTri, start + m, 	end, 		&rdi, &rdo, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		triangulateIllustrated(delTri, start, 		start + m, 	&ldo, &ldi, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep);
+		triangulateIllustrated(delTri, start + m, 	end, 		&rdi, &rdo, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep);
 
 		// Computes the upper common tangent of left and right edges
 		while (1) {
 			if 		(pointCompareEdge(delTri, rdi->orig, ldi) ==  1) {
 				ldi = ldi->sym->onext;
-				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 			}
 			else if (pointCompareEdge(delTri, ldi->orig, rdi) == -1) {
 				rdi = rdi->sym->oprev;
-				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 			}
 			else {
 				break;
@@ -1503,16 +1523,16 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 
 		// Creates an edge between rdi.orig and ldi.orig
 		base = connectEdges(delTri, ldi->sym, rdi);
-		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 
 		// Ajdusts ldo and rdo
 		if (ldi->orig == ldo->orig) {
 			ldo = base;
-			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 		}
 		if (rdi->orig == rdo->orig) {
 			rdo = base->sym;
-			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+			reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 		}
 
 		Edge *lcand, *rcand, *tmp;
@@ -1541,7 +1561,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 						   tmp = rcand->onext;
 						   deleteEdge(delTri, rcand);
 						   rcand = tmp;
-						   reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+						   reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 					   }
 			}
 			// Deletes left edges that fail the circle test
@@ -1553,7 +1573,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 						   tmp = lcand->oprev;
 						   deleteEdge(delTri, lcand);
 						   lcand = tmp;
-						   reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+						   reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 					   }
 			}
 
@@ -1563,15 +1583,15 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 
 				tmp = connectEdges(delTri, lcand, base->sym);
 				base = tmp;
-				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 			}
 			else {
 				tmp = connectEdges(delTri, base->sym, rcand->sym);
 				base = tmp;
-				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+				reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 			}
 		}
-		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, linesDraw, FAST, sleep);
+		reDrawTriangulation(delTri, window, linesPoints, pointsDraw, activePointsDraw, linesDraw, FAST, sleep, start, end);
 		*el = ldo;
 		*er = rdo;
 	}

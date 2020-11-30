@@ -22,7 +22,7 @@ All the parameters below are optionnal:\n\
 \t[-s smoothing_factor=4] smoothing applied on random polygon \n\
 \t[-a x_axis=1] x span (double) when generating uniform(-circle) random points\n\
 \t[-b y_axis=1] y span (double) when generating uniform(-circle) random points\n\
-\t[-t total_time=5] estimated total time (in seconds) for the animation, keep in mind that speed is limited by the refresh time\n\
+\t[-t total_time=20] estimated total time (in seconds) for the animation, keep in mind that speed is limited by the refresh time\n\
 \t[-d disable_drawing=0] disables drawing\n\
 \t[-r remove_duplicates=1] removes duplicated points (will add overhead), you can disable it to improve performances\n\
 \t[-h] displays help and exits\n"
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 		"normal",	// Random process
 		1.0,		// By default, will generate points
 		1.0,		// in a perfect square (or circle)
-		5e6,		// Total animation time in micro seconds
+		20e6,		// Total animation time in micro seconds
 		0,			// By default, we draw
 		1,			// We remove duplicates
 	};
