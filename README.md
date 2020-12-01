@@ -58,6 +58,15 @@ I edited some files manually to show you what you can do with this program.
 
 <p align="center"> <img src="static/illustration.gif" width="300"></p>
 
+## Voronoi diagrams
+
+From a given Delaunay triangulation, it is trivial to construct the equivalent  Voronoi diagram.
+Such a possibility is provided by the program.
+
+*Nonetheless*, the semi-infinite lines were omitted for drawing purposes. This program is meant to be fast
+and drawing semi-infinite lines cannot be done efficiently because it has to be recomputed whenever you move the window.
+So, indeed, the Voronoi diagram is not complete.
+
 ## Known issues
 
 In the GUI, using the SHIFT + KEY (i.e. fast repeat of KEY) can cause memory problems.

@@ -11,7 +11,8 @@
 #include <unistd.h>
 #endif
 
-#define ROBUST 1		// If True, will use robust predicates
+#define ROBUST 1		// If True, will use robust predicates but will add overhead (x1.3 slowdown)
+						// Non robust methods may caude problems with colinear (or close to) points
 #define MIN_DIST 1E-10 	// Minimim distance between two points (used to avoid placing multiple points at the same location)
 
 
