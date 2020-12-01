@@ -65,6 +65,10 @@ In the GUI, using the SHIFT + KEY (i.e. fast repeat of KEY) can cause memory pro
 This is the case when Voronoi and pretty drawings are activated, and that you try to
 quickly delete a lot of points.
 
+After having a look at memory leaks with Valgrind, it seems like the memory problems
+may come from the BOV library, a library provided for the course. My code, in its own, should be
+Memcheck clean.
+
 ## Sound bibliography
 
 All the musics are Copyright Free songs.
