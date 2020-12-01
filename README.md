@@ -56,6 +56,8 @@ I edited some files manually to show you what you can do with this program.
 
 <p align="center"> <img src="static/love.png" width="300"></p>
 
+<p align="center"> <img src="static/interact.gif" width="300"></p>
+
 <p align="center"> <img src="static/illustration.gif" width="300"></p>
 
 ## Voronoi diagrams
@@ -69,7 +71,7 @@ So, indeed, the Voronoi diagram is not complete.
 
 ## Known issues
 
-In the GUI, using the SHIFT + KEY (i.e. fast repeat of KEY) can cause memory problems.
+In the GUI, using the SHIFT + KEY (i.e. fast repeat of KEY) can cause memory problems if used for too long.
 
 This is the case when Voronoi and pretty drawings are activated, and that you try to
 quickly delete a lot of points.
