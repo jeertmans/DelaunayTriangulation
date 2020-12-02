@@ -94,7 +94,7 @@ void resetDelaunayTriangulation(DelaunayTriangulation *delTri) {
 	delTri->edges = malloc(sizeof(Edge) * delTri->n_edges_max);
 
 	if ((delTri->edges == NULL) && (delTri->n_points > 1)) {
-		printf("ERROR: Could't allocate memory for edges\n");
+		printf("ERROR: Couldn't allocate memory for edges\n");
 		free(delTri);
 		exit(1);
 	}
@@ -357,6 +357,55 @@ GLsizei getNumberOfTriangles(DelaunayTriangulation *delTri) {
 	if (visited_edges != NULL) free(visited_edges);
 
 	return n_triangles - 1; // Remove the "outside"
+
+}
+
+/*
+ * Returns the smallest angle in the DelaunayTriangulation.
+ *
+ * delTri:		the DelaunayTriangulation structure
+ *
+ * returns:		the smallest angle in the triangulation
+ */
+GLfloat getSmallestAngle(DelaunayTriangulation *delTri) {
+	if ((delTri->n_points < 3) || (!delTri->success)) {
+		return INFINITY;
+	}
+	char *visited_edges = calloc(delTri->n_edges, sizeof(char));
+	GLfloat angle, smallest_angle;
+	angle = smallest_angle = INFINITY;
+	Edge *e;
+
+	int outside_found = 0;
+
+   	for (GLsizei i = 0; i < delTri->n_edges; i++) {
+   		e = &(delTri->edges[i]);
+   		if ((!e->discarded) && (visited_edges[i] == 0)) {
+			// Only one set of edges is on the exterior
+			// Once it's found, no need to check anymore
+			if ((!outside_found) && (pointCompareEdge(delTri, e->onext->dest, e) == 1)) {
+				do {
+					// Edge has been now visited
+	   				visited_edges[e->idx] = 1;
+	   				e = e->onext->sym;
+	   			} while (e->idx != i);
+				outside_found = 1;
+			}
+			else {
+				do {
+					// Edge has been now visited
+	   				visited_edges[e->idx] = 1;
+					angle = angleBetweenContiguousEdges(delTri, e, e->onext->sym);
+					smallest_angle = MIN(angle, smallest_angle);
+	   				e = e->onext->sym;
+	   			} while (e->idx != i);
+			}
+   		}
+   	}
+
+	if (visited_edges != NULL) free(visited_edges);
+
+	return smallest_angle;
 
 }
 
@@ -778,6 +827,33 @@ int pointCompareEdge(DelaunayTriangulation *delTri, GLsizei i_p, Edge *e) {
 	return (det>0) - (det<0);
 }
 
+/*
+ * Computes the angle between to contiguous edges.
+ *
+ * delTri:		the DelaunayTriangulation structured
+ * e:			the first edge
+ * f:			the second edge (with f->dest == e->dest)
+ * returns:		the angle
+ */
+GLfloat angleBetweenContiguousEdges(DelaunayTriangulation *delTri, Edge *e, Edge *f) {
+	// https://www.omnicalculator.com/math/angle-between-two-vectors
+	GLfloat *point, *a, *b, *c;
+	GLfloat xa, xb, xc, ya, yb, yc;
+	a = delTri->points[e->orig];
+	b = delTri->points[e->dest];
+	c = delTri->points[f->orig];
+
+	xa = a[0]; xb = b[0]; xc = c[0];
+	ya = a[1]; yb = b[1]; yc = c[1];
+
+	GLfloat dx_e, dx_f, dy_e, dy_f;
+
+	dx_e = xb - xa; dx_f = xc - xb;
+	dy_e = yb - ya; dy_f = yc - yb;
+
+	return acos(-(dx_e * dx_f + dy_e * dy_f) / (sqrt(dx_e * dx_e + dy_e * dy_e) * sqrt(dx_f * dx_f + dy_f * dy_f)));
+}
+
 /////////////////////////
 // End: Geometry utils //
 /////////////////////////
@@ -975,6 +1051,16 @@ void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]) {
 }
 
 /*
+ * Fills the information text with some data.
+ *
+ * delTri:			the DelaunayTriangulation structure
+ * info_text_char:	the preallocated array that will contain the text
+ */
+void getInfoText(DelaunayTriangulation *delTri, char *info_text_char) {
+	sprintf(info_text_char, "Number of points: %7d / Smallest angle : %2.2f\xba", delTri->n_points, RAD2DEG(getSmallestAngle(delTri)));
+}
+
+/*
  * Provides quite a few tools to visualize the DelaunayTriangulation.
  *
  * delTri:		the DelaunayTriangulation structure
@@ -994,6 +1080,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 					 "\xf8 Press [V]   to show/hide Voronoi diagram\n"
 		             "\xf8 Press [F]   to switch between fast and pretty drawing\n"
 					 "\xf8 Press [I]   to illustrate each step of the triangulation\n"
+					 "\xf8 Press [G]   to show/hide the SMallest Angle Game rules\n"
 				     "\xf8 Press [X]   to show/hide this text\n"
 				     "\xf8 Press [H]   to show/hide the default help menu\n\n"
 				 	 "\x8a Features using DRAG & DROP may not work correctly\n"
@@ -1003,6 +1090,35 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	bov_text_param_t text_parameters = bov_text_get_param(text);
 	text_parameters.fontSize *= .7;
 	bov_text_set_param(text, text_parameters);
+
+	GLubyte info_text_char[200] = {""};
+
+	getInfoText(delTri, info_text_char);
+
+	bov_text_t* info_text = bov_text_new(info_text_char, GL_STATIC_DRAW);
+	bov_text_set_space_type(info_text, PIXEL_SPACE);
+
+	// Game rules
+	bov_text_t* rules = bov_text_new(
+		(GLubyte[]) {"\t\t\t\t\tPlay the SMallest Angle Game (SMAG) !\n"
+		 			 "\n"
+					 "Delaunay triangulation is used because it maximises the smallest angle.\n"
+					 "\n"
+					 "Here are the rules:\n"
+					 "\n"
+		             "\t1. Choose a minimum angle you should never be lower than (eg.: 5\xba)\n"
+		             "\t2. Delete all the points or restart with -n 0 flag\n"
+					 "\t3. Try to add new points while staying above the minimum angle\n"
+					 "\t4. When you break the limit, the game is over!\n"
+					 "\t   Record the # of points you reached and challenge you friends to do better\n"
+					 "\n"
+					 "Alternatively, you can play with friends on the same computer, and\n"
+					 "the one who first breaks the limit loses the game."},
+		GL_STATIC_DRAW);
+	bov_text_set_space_type(rules, PIXEL_SPACE);
+	bov_text_param_t rules_parameters = bov_text_get_param(rules);
+	rules_parameters.fontSize *= .7;
+	bov_text_set_param(rules, rules_parameters);
 
 	// Default values
 	GLfloat defaultPointWidth;
@@ -1042,12 +1158,12 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	int HIDE_TEXT = 0;
 	int SHOW_POINTS = 1;
 	int SHOW_LINES = 1;
+	int SHOW_GAME_RULES = 0;
 	int ILLUSTRATE = 0;
-	int KEY_A, KEY_D, KEY_S, KEY_F, KEY_V, KEY_X, KEY_O, KEY_L, KEY_I;
+	int KEY_A, KEY_D, KEY_S, KEY_F, KEY_V, KEY_X, KEY_O, KEY_L, KEY_I, KEY_G;
 	int KEY_SHIFT;
-	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F, LAST_KEY_V, LAST_KEY_X, LAST_KEY_O, LAST_KEY_L, LAST_KEY_I;
-	LAST_KEY_O = LAST_KEY_L = 0;
-	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = LAST_KEY_V = LAST_KEY_X = LAST_KEY_I = 0;
+	int LAST_KEY_A, LAST_KEY_D, LAST_KEY_F, LAST_KEY_V, LAST_KEY_X, LAST_KEY_O, LAST_KEY_L, LAST_KEY_I, LAST_KEY_G;
+	LAST_KEY_A = LAST_KEY_D = LAST_KEY_F = LAST_KEY_V = LAST_KEY_X = LAST_KEY_O = LAST_KEY_L = LAST_KEY_I = LAST_KEY_G = 0;
 
 	int idx = -1;
 
@@ -1097,6 +1213,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		KEY_O = glfwGetKey(window->self, GLFW_KEY_O);
 		KEY_L = glfwGetKey(window->self, GLFW_KEY_L);
 		KEY_I = glfwGetKey(window->self, GLFW_KEY_I);
+		KEY_G = glfwGetKey(window->self, GLFW_KEY_G);
 		KEY_SHIFT = glfwGetKey(window->self, GLFW_KEY_LEFT_SHIFT) || glfwGetKey(window->self, GLFW_KEY_RIGHT_SHIFT);
 
 		if (KEY_A) {
@@ -1200,10 +1317,29 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		else {
 			LAST_KEY_I = KEY_I;
 		}
+		if (KEY_G) {
+			if (!LAST_KEY_G) {
+				SHOW_GAME_RULES = !SHOW_GAME_RULES;
+				LAST_KEY_G = KEY_G;
+			}
+		}
+		else {
+			LAST_KEY_G = KEY_G;
+		}
+
+		if (SHOW_GAME_RULES) {
+			rules_parameters.pos[0] = bov_window_get_xres(window) / 2 - 400;
+			rules_parameters.pos[1] = bov_window_get_yres(window) / 2 + 150;
+			bov_text_set_param(rules, rules_parameters);
+
+			bov_text_draw(window, rules);
+			bov_window_update(window);
+			continue;
+		}
 
 		// 0. We required illustration mode
 
-		if (ILLUSTRATE) {
+		else if (ILLUSTRATE) {
 			resetDelaunayTriangulation(delTri);
 			// Trying to make the sleep time % to the inverse of the number of edges
 
@@ -1225,6 +1361,8 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		if (REQUIRE_UPDATE) {
 			// Recompute triangulation
 			triangulateDT(delTri);
+			getInfoText(delTri, info_text_char);
+
 			if (delTri->success) {
 
 				// Free old lines
@@ -1329,7 +1467,13 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 
 		bov_text_set_boldness(text, 0.3 * sin(2 * wtime) + 0.3);
 
-		if (!HIDE_TEXT) bov_text_draw(window, text);
+		if (!HIDE_TEXT) {
+
+			bov_text_update(info_text, info_text_char);
+
+			bov_text_draw(window, text);
+			bov_text_draw(window, info_text);
+		}
 
 		// 4. Update windows
 		bov_window_update(window);
@@ -1337,6 +1481,8 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 
 	// Free all memory allocated
 	bov_text_delete(text);
+	bov_text_delete(info_text);
+	bov_text_delete(rules);
 	bov_points_delete(pointsDraw);
 	bov_points_delete(linesDraw);
 	bov_points_delete(mouseDraw);

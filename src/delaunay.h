@@ -11,6 +11,9 @@
 #include <unistd.h>
 #endif
 
+#define MIN(x,y) ((x<y)?x:y)
+#define RAD2DEG(a) ((180*a)/M_PI)
+
 #define ROBUST 1		// If True, will use robust predicates but will add overhead (x1.3 slowdown)
 						// Non robust methods may caude problems with colinear (or close to) points
 #define MIN_DIST 1E-10 	// Minimim distance between two points (used to avoid placing multiple points at the same location)
@@ -66,11 +69,13 @@ static int compare_points(const void *a_v, const void *b_v);
 int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsizei i_b, GLsizei i_c);
 void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsizei i_c, GLfloat center[2]);
 int pointCompareEdge(DelaunayTriangulation *delTri, GLsizei i_p, Edge *e);
+GLfloat angleBetweenContiguousEdges(DelaunayTriangulation *delTri, Edge *e, Edge *f);
 
 void triangulateDT(DelaunayTriangulation *delTri);
 void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er);
 
 void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]);
+void getInfoText(DelaunayTriangulation *delTri, char *info_text_char);
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window, double total_time);
 void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
 						 GLfloat linesPoints[][2],
