@@ -72,7 +72,7 @@ So, indeed, the Voronoi diagram is not complete.
 If you happen know the Pr. Vincent Legat, then you should for sure have a look to the YOUPIDOU mode
 of execution using the `-y` flag with Python.
 
-Sound files have been kindly provided by the {Youpidapp](https://github.com/TGLuis/Youpidapp)
+Sound files have been kindly provided by the [Youpidapp](https://github.com/TGLuis/Youpidapp)
 authors. If you happen to have an Android phone, make sure to try their app!
 
 All these sounds files are the property of Vincent Legat and were obtained from
