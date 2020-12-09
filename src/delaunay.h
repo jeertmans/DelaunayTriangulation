@@ -12,6 +12,7 @@
 #endif
 
 #define MIN(x,y) ((x<y)?x:y)
+#define MAX(x,y) ((x>y)?x:y)
 #define RAD2DEG(a) ((180*a)/M_PI)
 
 #define ROBUST 1		// If True, will use robust predicates but will add overhead (x1.3 slowdown)
@@ -43,6 +44,21 @@ typedef struct DelaunayTriangulation {
 
 } DelaunayTriangulation;
 
+typedef struct DTDrawingParameters {
+	DelaunayTriangulation *delTri;
+	bov_window_t *window;
+	GLfloat (*linesPoints)[2];
+	bov_points_t *pointsDraw, *activePointsDraw, *linesDraw;
+	GLfloat y_min, y_max;
+	int FAST, sleep;
+
+	GLsizei n_divides, n_divides_max;
+
+	GLfloat (*divideLinesPoints)[2];
+	char *divideLinesMask;
+	bov_points_t *divideLinesDraw;
+} DTDrawingParameters;
+
 DelaunayTriangulation* initDelaunayTriangulation(GLfloat points[][2], GLsizei n, int remove_duplicates);
 void resetDelaunayTriangulation(DelaunayTriangulation *delTri);
 GLsizei getPointIndex(DelaunayTriangulation *delTri, GLfloat point[2]);
@@ -66,6 +82,7 @@ Edge* connectEdges(DelaunayTriangulation *delTri, Edge *a, Edge *b);
 void deleteEdge(DelaunayTriangulation *delTri, Edge *e);
 
 static int compare_points(const void *a_v, const void *b_v);
+void getPointsBoudingBox(GLfloat points[][2], GLsizei n_points, GLfloat bounds[][2]);
 int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsizei i_b, GLsizei i_c);
 void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsizei i_c, GLfloat center[2]);
 int pointCompareEdge(DelaunayTriangulation *delTri, GLsizei i_p, Edge *e);
@@ -77,18 +94,21 @@ void triangulate(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge
 void getMousePosition(bov_window_t *window, GLfloat mouse_pos[2]);
 void getInfoText(DelaunayTriangulation *delTri, char *info_text_char);
 void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *window, double total_time);
-void reDrawTriangulation(DelaunayTriangulation *delTri, bov_window_t *window,
-						 GLfloat linesPoints[][2],
-						 bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
-						 int FAST, int sleep,
+DTDrawingParameters* initDTDrawingParameters(DelaunayTriangulation *delTri,
+											 bov_window_t *window,
+						 					 GLfloat linesPoints[][2],
+						 					 bov_points_t *pointsDraw,
+											 bov_points_t *activePointsDraw,
+											 bov_points_t *linesDraw,
+											 GLfloat bounds[][2],
+						 					 int FAST, int sleep);
+GLsizei addDivideLine(DTDrawingParameters *DTDparams, GLsizei pivot);
+void deleteDivideLine(DTDrawingParameters *DTDparams, GLsizei index);
+void freeDTDrawingParameters(DTDrawingParameters *DTDparams);
+void reDrawTriangulation(DTDrawingParameters *DTDparams,
 					 	 int start, int end);
-void triangulateDTIllustrated(DelaunayTriangulation *delTri, bov_window_t *window,
-						 GLfloat linesPoints[][2],
-						 bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
-						 int FAST, int sleep);
-void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er, bov_window_t *window,
-						    GLfloat linesPoints[][2],
-						    bov_points_t *pointsDraw, bov_points_t *activePointsDraw, bov_points_t *linesDraw,
-						    int FAST, int sleep);
+void triangulateDTIllustrated(DTDrawingParameters *DTDparams);
+void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsizei end, Edge **el, Edge **er,
+						    DTDrawingParameters *DTDparams);
 
 #endif

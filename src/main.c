@@ -11,7 +11,7 @@
 #include <string.h>
 #include <getopt.h>
 
-#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:r:h"
+#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:yi:r:h"
 #define USAGE_FMT  "\
 Delaunay Triangulation.\n\
 Jérome Eertmans, 2020.\n\n\
@@ -28,13 +28,14 @@ Options:\n\
 \t[-v verbose]                  adds some verbosity to the program execution\n\
 \t[-i input_file=NULL]          if present, will read points from this file where first line must be the number of points, and the next lines must match format %%lf%%lf\n\
 \t[-o output_file=NULL]         if present, will save the last status of the DelaunayTriangulation, where the first line will contain \"(n_points, n_lines_points)\", then all the points (first the points, and the line points)\n\
-\t[-n number_of_points=500]     number of random points\n\
+\t[-n number_of_points=50]     number of random points\n\
 \t[-p random_process=normal]    normal, uniform(-circle), or polygon\n\
 \t[-s smoothing_factor=4]       smoothing applied on random polygon \n\
 \t[-a x_axis=1]                 x span (double) when generating uniform(-circle) random points\n\
 \t[-b y_axis=1]                 y span (double) when generating uniform(-circle) random points\n\
 \t[-t total_time=20]            estimated total time (in seconds) for the animation, keep in mind that speed is limited by the refresh time\n\
 \t[-d disable_drawing]          disables drawing\n\
+\t[-y youpidou_mode]          	activates YOUPIDOU mode, only available when using main.py\n\
 \t[-r remove_duplicates=1]      removes duplicated points (will add overhead), you can disable it to improve performances\n\
 \t[-h]                          displays help and exits\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
 		0,			// Verbosity
 		NULL,		// Input file
 		NULL,		// Output file
-		500,		// Number of points
+		50,		// Number of points
 		4,			// Smoothing factor
 		"normal",	// Random process
 		1.0,		// By default, will generate points
@@ -132,6 +133,8 @@ int main(int argc, char *argv[])
 				break;
 			case 'd':
 				options.d = 1;
+				break;
+			case 'y':
 				break;
 			case 'r':
 				options.r = atoi(optarg);

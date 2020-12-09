@@ -67,7 +67,20 @@ Such a possibility is provided by the program.
 and drawing semi-infinite lines cannot be done efficiently because it has to be recomputed whenever you move the window.
 So, indeed, the Voronoi diagram is not complete.
 
+## YOUPIDOU mode
+
+If you happen know the Pr. Vincent Legat, then you should for sure have a look to the YOUPIDOU mode
+of execution using the `-y` flag with Python.
+
+Sound files have been kindly provided by the {Youpidapp](https://github.com/TGLuis/Youpidapp)
+authors. If you happen to have an Android phone, make sure to try their app!
+
+All these sounds files are the property of Vincent Legat and were obtained from
+his [Youtube channel](https://www.youtube.com/channel/UC-QAurzK1czAlnMFOqkfxfw).
+
 ## Known issues
+
+### Memory issues
 
 In the GUI, using the SHIFT + KEY (i.e. fast repeat of KEY) can cause memory problems if used for too long.
 
@@ -77,6 +90,11 @@ quickly delete a lot of points.
 After having a look at memory leaks with Valgrind, it seems like the memory problems
 may come from the BOV library, a library provided for the course. My code, in its own, is
 Memcheck clean as it does not leak anything when used with `-d` flag.
+
+### `ALSA lib pcm.c:8526:(snd_pcm_recover) underrun occurred`
+
+You can ignore this error, it just happens because you closed the application when a new sound
+file was just starting to be played.
 
 ## Sound bibliography
 
