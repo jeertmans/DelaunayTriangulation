@@ -87,7 +87,7 @@ the divide and conquer approach, this algorithm is also much harder to implement
 Here, a small benchmark (on the same computer) shows that a good implementation of the divide and conquer
 solution can be faster (more than 2 times!) than the Fortune's algorithm.
 
-<p align="center"> <img src="static/speed.svg" width="300"></p>
+<p align="center"> <img src="static/speed.svg" width="800"></p>
 
 ## Known issues
 
