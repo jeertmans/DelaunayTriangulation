@@ -11,7 +11,7 @@
 #include <string.h>
 #include <getopt.h>
 
-#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:yi:r:h"
+#define OPTSTR "vi:i:o:n:p:s:a:b:t:di:yi:r:ui:x:h"
 #define USAGE_FMT  "\
 Delaunay Triangulation.\n\
 Jérome Eertmans, 2020.\n\n\
@@ -28,7 +28,7 @@ Options:\n\
 \t[-v verbose]                  adds some verbosity to the program execution\n\
 \t[-i input_file=NULL]          if present, will read points from this file where first line must be the number of points, and the next lines must match format %%lf%%lf\n\
 \t[-o output_file=NULL]         if present, will save the last status of the DelaunayTriangulation, where the first line will contain \"(n_points, n_lines_points)\", then all the points (first the points, and the line points)\n\
-\t[-n number_of_points=50]     number of random points\n\
+\t[-n number_of_points=50]		number of random points\n\
 \t[-p random_process=normal]    normal, uniform(-circle), or polygon\n\
 \t[-s smoothing_factor=4]       smoothing applied on random polygon \n\
 \t[-a x_axis=1]                 x span (double) when generating uniform(-circle) random points\n\
@@ -37,6 +37,8 @@ Options:\n\
 \t[-d disable_drawing]          disables drawing\n\
 \t[-y youpidou_mode]          	activates YOUPIDOU mode, only available when using main.py\n\
 \t[-r remove_duplicates=1]      removes duplicated points (will add overhead), you can disable it to improve performances\n\
+\t[-u microseconds]				prints the total time taken by the triangulation in microseconds\n\
+\t[-x number_of_points]			brenchmark code, alias to -n {number_of_points} -d -r 0 -u\n\
 \t[-h]                          displays help and exits\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"
@@ -61,6 +63,7 @@ typedef struct options_t {
 	double t;
 	int d;
 	int r;
+	int u;
 } options_t;
 
 
@@ -81,6 +84,7 @@ int main(int argc, char *argv[])
 		20e6,		// Total animation time in micro seconds
 		0,			// By default, we draw
 		1,			// We remove duplicates
+		0,			// No timing in microseconds
 	};
 
 	// Inspired from:
@@ -138,6 +142,15 @@ int main(int argc, char *argv[])
 				break;
 			case 'r':
 				options.r = atoi(optarg);
+				break;
+			case 'u':
+				options.u = 1;
+				break;
+			case 'x':
+				options.u = 1;
+				options.n = atoi(optarg);
+				options.d = 1;
+				options.r = 0;
 				break;
 			case 'v':
 				options.v = 1;
@@ -223,6 +236,7 @@ int main(int argc, char *argv[])
 
 	DelaunayTriangulation *delTri;
 
+	clock_t u_time = clock();
 	clock_t begin = clock();
 
 	delTri = initDelaunayTriangulation(points, n_points, options.r);
@@ -239,6 +253,10 @@ int main(int argc, char *argv[])
 	if (options.v) {
 		printf("DelaunayTriangulation was computed in %.6f s.\n",
 			   (double) (clock() - begin) / CLOCKS_PER_SEC);
+	}
+
+	if (options.u) {
+		printf("%ld\n", clock() - begin);
 	}
 
 	if (options.v) describeDelaunayTriangulation(delTri);

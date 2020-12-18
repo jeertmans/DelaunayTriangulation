@@ -1,4 +1,4 @@
-# Numerical Geometry Project
+# Numerical Geometry Project: a fast implementation of the Delaunay Triangulation
 
 - Author: Jérome Eertmans (13551600)
 - Course: Numerical Geometries (LMECA2710)
@@ -32,6 +32,7 @@ very nice sound effects!
 What you need:
  - A Python3 installation
  - 2 small Python packages (use: `pip3 install -r requirements.txt`)
+ - 3 other Python packages if you want to use `python3 benchmark.py` (included in `requirements.txt`)
 
 Then, you can use the produce the exact same results + some bonuses:
 ```
@@ -77,6 +78,16 @@ authors. If you happen to have an Android phone, make sure to try their app!
 
 All these sounds files are the property of Vincent Legat and were obtained from
 his [Youtube channel](https://www.youtube.com/channel/UC-QAurzK1czAlnMFOqkfxfw).
+
+## Made to be fast
+
+Event though the Fortune algorithm can be used to generate Voronoi diagrams (and Delaunay Triangluation) faster than
+the divide and conquer approach, this algorithm is also much harder to implement.
+
+Here, a small benchmark (on the same computer) shows that a good implementation of the divide and conquer
+solution can be faster (more than 2 times!) than the Fortune's algorithm.
+
+<p align="center"> <img src="static/speed.svg" width="300"></p>
 
 ## Known issues
 
