@@ -530,7 +530,7 @@ void getVoronoiLines(DelaunayTriangulation *delTri,
 
 	GLsizei i_tri, i_nei, i;
 	GLsizei i_e;
-	GLfloat x, y, xa, ya, xb, yb, m, p, det, xp, yp, factor;
+	GLfloat x, y, xa, ya, xb, yb, m, p, det, xp, yp, factor, dx;
 	GLfloat *a, *b;
 
 	GLsizei l_i = 0;
@@ -554,12 +554,20 @@ void getVoronoiLines(DelaunayTriangulation *delTri,
 				xb = b[0];
 				yb = b[1];
 
-				m = (yb - ya) / (xb - xa);
-				p = ya - xa * m;
-				det = 1.0 / (1.0 + m * m);
 
-				xp = (x + m * (y - p)) * det;
-				yp = (p + m * (m * y + x)) * det;
+				dx = xb - xa;
+				if (dx == 0) {
+					xp = xa;
+					yp = y;
+				}
+				else {
+					m = (yb - ya) / dx;
+					p = ya - xa * m;
+					det = 1.0 / (1.0 + m * m);
+
+					xp = (x + m * (y - p)) * det;
+					yp = (p + m * (m * y + x)) * det;
+				}
 
 				factor = 100.0;
 
