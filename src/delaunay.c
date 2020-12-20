@@ -450,7 +450,9 @@ void getVoronoiCentersAndNeighbors(DelaunayTriangulation *delTri,
 				do {
 					// Edge has been now visited
 	   				visited_edges[e->idx] = 1;
-					edges_triangle[e->idx] = n_triangles; // n_triangles = "outside"
+					// If the triangle is the outside, we store n_triangles + i_e
+					// to later retrieve i_e without needed additional structure
+					edges_triangle[e->idx] = n_triangles + e->idx ; // n_triangles = "outside"
 	   				e = e->onext->sym;
 	   			} while (e->idx != i);
 				outside_found = 1;
@@ -512,18 +514,48 @@ void getVoronoiLines(DelaunayTriangulation *delTri,
 	}
 
 	GLsizei i_tri, i_nei, i;
+	GLsizei i_e;
+	GLfloat x, y, xa, ya, xb, yb, m, p, det, xp, yp, factor;
+	GLfloat *a, *b;
 
 	GLsizei l_i = 0;
 
 	for(i_tri = 0; i_tri < n_triangles; i_tri++) {
 		for (i = 0; i < 3; i++) {
-			lines[l_i    ][0] = centers[i_tri][0];
-			lines[l_i    ][1] = centers[i_tri][1];
+			x = centers[i_tri][0];
+			y = centers[i_tri][1];
+			lines[l_i    ][0] = x;
+			lines[l_i    ][1] = y;
 			i_nei = neighbors[i_tri][i];
 
-			if (i_nei == n_triangles){ // neighbor is "outside"
-				lines[l_i + 1][0] = centers[i_tri][0];
-				lines[l_i + 1][1] = centers[i_tri][1];
+			if (i_nei >= n_triangles){ // neighbor is "outside"
+				// Circumcenter is projected on the edge
+
+				i_e = i_nei - n_triangles;
+				a = delTri->points[delTri->edges[i_e].orig];
+				xa = a[0];
+				ya = a[1];
+				b = delTri->points[delTri->edges[i_e].dest];
+				xb = b[0];
+				yb = b[1];
+
+				m = (yb - ya) / (xb - xa);
+				p = ya - xa * m;
+				det = 1.0 / (1.0 + m * m);
+
+				xp = (x + m * (y - p)) * det;
+				yp = (p + m * (m * y + x)) * det;
+
+				factor = 100.0;
+
+				// If point is on the left, then it is outside the convex hull
+				// and the ligne must point outward
+				if (orient2d(centers[i_tri], a, b) > 0) {
+					factor = - factor;
+				}
+
+				lines[l_i + 1][0] = x + factor * (xp - x);
+				lines[l_i + 1][1] = y + factor * (yp - y);
 			}
 			else {
 				lines[l_i + 1][0] = centers[i_nei][0];

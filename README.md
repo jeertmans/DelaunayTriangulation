@@ -64,10 +64,6 @@ I edited some files manually to show you what you can do with this program.
 From a given Delaunay triangulation, it is trivial to construct the equivalent  Voronoi diagram.
 Such a possibility is provided by the program.
 
-**Nonetheless**, the semi-infinite lines were omitted for drawing purposes. This program is meant to be fast
-and drawing semi-infinite lines cannot be done efficiently because it has to be recomputed whenever you move the window.
-So, indeed, the Voronoi diagram is not complete.
-
 ## YOUPIDOU mode
 
 If you happen know the Pr. Vincent Legat, then you should for sure have a look to the YOUPIDOU mode
