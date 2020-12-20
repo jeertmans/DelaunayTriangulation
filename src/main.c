@@ -1,3 +1,18 @@
+/*
+ * Delaunay triangulation program, made to be fast and responsive.
+ *
+ * Author: 	Jerome Eertmans
+ * Context: project for the LMECA2710 course, at EPL faculty UCLouvain,
+ *			given by Pr. Vincent Legat and Pr. Jean-Francois Remacle.
+ *
+ * All sources of inspiration are clearly marked at specific places in the code.
+ * Feel free to use and re-use this code! No attribution but the ones for BOV.h,
+ * predicates.h and the sound files are required.
+ *
+ * Any contribution is welcome on the Github this project:
+ * https://github.com/jeertmans/DelaunayTriangulation
+ */
+
 #include "inputs.h"
 #include "delaunay.h"
 #include <time.h>
