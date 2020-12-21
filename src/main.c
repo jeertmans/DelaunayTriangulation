@@ -44,7 +44,7 @@ Options:\n\
 \t[-i input_file=NULL]          if present, will read points from this file where first line must be the number of points,\n\
 \t                              and the next lines must match format %%lf%%lf\n\
 \t[-o output_file=NULL]         if present, will save the last status of the DelaunayTriangulation, where the first line\n\
-\t                              will contain \"(n_points, n_lines_points)\", then all the points (first the points, and the line points)\n\
+\t                              will contain \"(n_points, n_lines_points)\", then all the points (first the points and, then, the line points)\n\
 \t[-n number_of_points=50]      number of random points\n\
 \t[-p random_process=normal]    normal, uniform(-circle), or polygon\n\
 \t[-s smoothing_factor=4]       smoothing applied on random polygon \n\
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 		0,			// Verbosity
 		NULL,		// Input file
 		NULL,		// Output file
-		50,		// Number of points
+		50,			// Number of points
 		4,			// Smoothing factor
 		"normal",	// Random process
 		1.0,		// By default, will generate points
