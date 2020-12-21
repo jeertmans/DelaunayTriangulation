@@ -41,19 +41,21 @@ Usage:\n\
 \n\
 Options:\n\
 \t[-v verbose]                  adds some verbosity to the program execution\n\
-\t[-i input_file=NULL]          if present, will read points from this file where first line must be the number of points, and the next lines must match format %%lf%%lf\n\
-\t[-o output_file=NULL]         if present, will save the last status of the DelaunayTriangulation, where the first line will contain \"(n_points, n_lines_points)\", then all the points (first the points, and the line points)\n\
-\t[-n number_of_points=50]		number of random points\n\
+\t[-i input_file=NULL]          if present, will read points from this file where first line must be the number of points,\n\
+\t                              and the next lines must match format %%lf%%lf\n\
+\t[-o output_file=NULL]         if present, will save the last status of the DelaunayTriangulation, where the first line\n\
+\t                              will contain \"(n_points, n_lines_points)\", then all the points (first the points, and the line points)\n\
+\t[-n number_of_points=50]      number of random points\n\
 \t[-p random_process=normal]    normal, uniform(-circle), or polygon\n\
 \t[-s smoothing_factor=4]       smoothing applied on random polygon \n\
 \t[-a x_axis=1]                 x span (double) when generating uniform(-circle) random points\n\
 \t[-b y_axis=1]                 y span (double) when generating uniform(-circle) random points\n\
 \t[-t total_time=20]            estimated total time (in seconds) for the animation, keep in mind that speed is limited by the refresh time\n\
 \t[-d disable_drawing]          disables drawing\n\
-\t[-y youpidou_mode]          	activates YOUPIDOU mode, only available when using main.py\n\
+\t[-y youpidou_mode]            activates YOUPIDOU mode, only available when using main.py\n\
 \t[-r remove_duplicates=1]      removes duplicated points (will add overhead), you can disable it to improve performances\n\
-\t[-u microseconds]				prints the total time taken by the triangulation in microseconds\n\
-\t[-x number_of_points]			brenchmark code, alias to -n {number_of_points} -d -r 0 -u\n\
+\t[-u microseconds]             prints the total time taken by the triangulation in microseconds\n\
+\t[-x number_of_points]         brenchmark code, alias to -n {number_of_points} -d -r 0 -u\n\
 \t[-h]                          displays help and exits\n"
 #define ERR_FOPEN_INPUT  "fopen(input, r)"
 #define ERR_FOPEN_OUTPUT "fopen(output, w)"
