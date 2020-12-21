@@ -1158,7 +1158,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 					 "\xf8 Hold  [S]   to select a point nearby your cursor and\n"
 					 "              change its location\n"
 					 "\xf8 Press [O]   to show/hide points\n"
-					 "\xf8 Press [L]   to show/hide lines\n"
+					 "\xf8 Press [L]   to show/hide triangulation lines\n"
 					 "\xf8 Press [V]   to show/hide Voronoi diagram\n"
 		             "\xf8 Press [F]   to switch between fast and pretty drawing\n"
 					 "\xf8 Press [I]   to illustrate each step of the triangulation\n"
