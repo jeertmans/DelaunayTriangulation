@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
 		bov_window_t* window = bov_window_new(-1, 1, "DelaunayTriangulation - Jérome Eertmans");
 
 #if WHITE_BACKGROUND
-		bov_window_set_color(window, (GLfloat[]){1.0f, 1.f, 1.0f, 1.0f});
+		bov_window_set_color(window, (GLfloat[]){1.0f, 1.0f, 1.0f, 1.0f});
 #else
 		bov_window_set_color(window, (GLfloat[]){0.9f, 0.85f, 0.8f, 1.0f});
 #endif

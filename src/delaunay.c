@@ -854,8 +854,10 @@ int pointInCircle(DelaunayTriangulation *delTri, GLsizei i_p, GLsizei i_a, GLsiz
  * delTri:		the DelaunayTriangulation structure
  * i_a,b,c:		the index of the points of the triangle
  * center:		the preallocated array that will contain the center
+ *
+ * returns:		the diameter of the circle
  */
-void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsizei i_c, GLfloat center[2]) {
+GLfloat circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsizei i_c, GLfloat center[2]) {
 	// https://www.codewars.com/kata/5705785658b58f387b001ffc
 	GLfloat *point, *a, *b, *c;
 	a = delTri->points[i_a];
@@ -876,6 +878,13 @@ void circleCenter(DelaunayTriangulation *delTri, GLsizei i_a, GLsizei i_b, GLsiz
 	center[0] = (aa * dy_bc + bb * dy_ca + cc * dy_ab) / d;
 	// WARNING: there is an error is the link, it is Bx - Ax (and not the opposite)
 	center[1] = (aa * (c[0] - b[0]) + bb * (a[0] - c[0]) + cc * (b[0] - a[0])) / d;
+
+	GLfloat dx, dy;
+
+	dx = a[0] - center[0];
+	dy = a[1] - center[1];
+
+	return sqrt(dx * dx + dy * dy);
 }
 
 /*
@@ -1202,18 +1211,11 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	rules_parameters.fontSize *= .7;
 	bov_text_set_param(rules, rules_parameters);
 
-	// Default values
-	GLfloat defaultPointWidth;
-	GLfloat updatedPointWidth;
-
-	defaultPointWidth = 0.01;
-	updatedPointWidth = 0.04;
-
 	// Points
     bov_points_t *pointsDraw = bov_points_new(delTri->points, delTri->n_points, GL_STATIC_DRAW);
-	bov_points_set_color(pointsDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
-	bov_points_set_outline_color(pointsDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
-	bov_points_set_width(pointsDraw, defaultPointWidth);
+	bov_points_set_color(pointsDraw, BASIC_POINTS_COLOR);
+	bov_points_set_outline_color(pointsDraw, BASIC_POINTS_OUTLINE_COLOR);
+	bov_points_set_width(pointsDraw, BASIC_POINTS_WIDTH);
 
 	GLfloat bounds[][2] = {{0.0, 0.0}, {0.0, 0.0}};
 
@@ -1221,10 +1223,10 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	GLsizei n_lines = 0;
 	GLfloat (*linesPoints)[2] = NULL;
 	bov_points_t *linesDraw = bov_points_new(linesPoints, n_lines, GL_STATIC_DRAW);
-	bov_points_set_color(linesDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 1.0});
-	bov_points_set_width(linesDraw, 0.004);
-	bov_points_set_outline_color(linesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
-	bov_points_set_outline_width(linesDraw, .002);
+	bov_points_set_color(linesDraw, TRIANGULATION_LINES_COLOR);
+	bov_points_set_width(linesDraw, TRIANGULATION_LINES_WIDTH);
+	bov_points_set_outline_color(linesDraw, TRIANGULATION_LINES_OUTLINE_COLOR);
+	bov_points_set_outline_width(linesDraw, 0.5 * TRIANGULATION_LINES_WIDTH);
 
 	// If DelaunayTriangulation was computed, will display it
 	if (delTri->success) {
@@ -1254,27 +1256,27 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 	// Mouse
 	GLfloat mousePoint[][2] = {{0.0, 0.0}};
 	bov_points_t *mouseDraw = bov_points_new(mousePoint, 1, GL_STATIC_DRAW);
-	bov_points_set_color(mouseDraw, (GLfloat[4]) {0.0, 0.0, 0.0, 0.0});
-	bov_points_set_outline_color(mouseDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
-	bov_points_set_width(mouseDraw, defaultPointWidth);
+	bov_points_set_color(mouseDraw, MOUSE_POINTS_COLOR);
+	bov_points_set_outline_color(mouseDraw, MOUSE_POINTS_OUTLINE_COLOR);
+	bov_points_set_width(mouseDraw, MOUSE_POINTS_WIDTH);
 	bov_points_set_outline_width(mouseDraw, -.1);
 
 	// Voronoi
 	GLsizei n_triangles = 0;
 	GLfloat (*voronoiCenters)[2] = NULL;
 	bov_points_t *voronoiCentersDraw = bov_points_new(voronoiCenters, n_triangles, GL_STATIC_DRAW);
-	bov_points_set_color(voronoiCentersDraw, (GLfloat[4]) {0.0, 1.0, 0.0, 1.0});
-	bov_points_set_outline_color(voronoiCentersDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
-	bov_points_set_width(voronoiCentersDraw, defaultPointWidth);
+	bov_points_set_color(voronoiCentersDraw, VORONOI_POINTS_COLOR);
+	bov_points_set_outline_color(voronoiCentersDraw, VORONOI_POINTS_OUTLINE_COLOR);
+	bov_points_set_width(voronoiCentersDraw, VORONOI_POINTS_WIDTH);
 
 	GLsizei n_voronoi_lines = 0;
 	GLsizei (*voronoiNeighbors)[3] = NULL;
 	GLfloat (*voronoiLines)[2] = NULL;
 	bov_points_t *voronoiLinesDraw = bov_points_new(linesPoints, n_lines, GL_STATIC_DRAW);
-	bov_points_set_color(voronoiLinesDraw, (GLfloat[4]) {0.0, 0.0, 1.0, 1.0});
-	bov_points_set_width(voronoiLinesDraw, 0.004);
-	bov_points_set_outline_color(voronoiLinesDraw, (GLfloat[4]) {0.3, 0.12, 0.0, 0.25});
-	bov_points_set_outline_width(voronoiLinesDraw, .002);
+	bov_points_set_color(voronoiLinesDraw, VORONOI_LINES_COLOR);
+	bov_points_set_width(voronoiLinesDraw, VORONOI_LINES_WIDTH);
+	bov_points_set_outline_color(voronoiLinesDraw, VORONOI_LINES_OUTLINE_COLOR);
+	bov_points_set_outline_width(voronoiLinesDraw, .5 * VORONOI_LINES_WIDTH);
 
 	// Write keystrokes in a file
 
@@ -1433,9 +1435,9 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 
 			// Active points
 		    bov_points_t *activePointsDraw = bov_points_new(delTri->points, delTri->n_points, GL_STATIC_DRAW);
-			bov_points_set_color(activePointsDraw, (GLfloat[4]) {0.0, 1.0, 0.0, 1.0});
-			bov_points_set_outline_color(activePointsDraw, (GLfloat[4]) {0.3, 1., 0.0, 0.25});
-			bov_points_set_width(activePointsDraw, 2 * defaultPointWidth);
+			bov_points_set_color(activePointsDraw, ACTIVE_POINTS_COLOR);
+			bov_points_set_outline_color(activePointsDraw, ACTIVE_POINTS_OUTLINE_COLOR);
+			bov_points_set_width(activePointsDraw, ACTIVE_POINTS_WIDTH);
 
 			// Trying to make the sleep time % to the inverse of the number of edges
 
@@ -1526,7 +1528,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 			// Draws a red point where the mouse was when key was pressed
 			bov_points_update(mouseDraw, mousePoint, 1);
 			bov_points_set_color(mouseDraw, (GLfloat[4]) {1.0, 0.0, 0.0, 1.0});
-			bov_points_set_width(mouseDraw, updatedPointWidth);
+			bov_points_set_width(mouseDraw, MOUSE_POINTS_WIDTH);
 
 			GLsizei n_triangles = getNumberOfTriangles(delTri);
 
@@ -1536,7 +1538,7 @@ void drawDelaunayTriangulation(DelaunayTriangulation *delTri, bov_window_t *wind
 		else {
 			bov_points_param_t param = bov_points_get_param(mouseDraw);
 			param.fillColor[3] *= 0.95;
-			param.width -= (param.width - defaultPointWidth) / 10;
+			param.width -= (param.width - BASIC_POINTS_WIDTH) / 10;
 			bov_points_set_param(mouseDraw, param);
 		}
 
@@ -1639,6 +1641,7 @@ DTDrawingParameters* initDTDrawingParameters(DelaunayTriangulation *delTri,
 	DTDparams->linesDraw = linesDraw;
 	DTDparams->FAST = FAST;
 	DTDparams->sleep = sleep;
+	DTDparams->draw_circle = 1;
 
 	GLfloat dy = bounds[1][1] - bounds[0][1];
 
@@ -1652,12 +1655,65 @@ DTDrawingParameters* initDTDrawingParameters(DelaunayTriangulation *delTri,
 	DTDparams->divideLinesDraw = bov_points_new(DTDparams->divideLinesPoints, DTDparams->n_divides_max * 2, GL_STATIC_DRAW);
 	DTDparams->divideLinesMask = calloc(DTDparams->n_divides_max, sizeof(char));
 
-	bov_points_set_color(DTDparams->divideLinesDraw, (GLfloat[4]) {1.0, 0.0, 0.0, 0.8});
-	bov_points_set_width(DTDparams->divideLinesDraw, 0.015);
+	bov_points_set_color(DTDparams->divideLinesDraw, DIVIDE_LINES_COLOR);
+	bov_points_set_width(DTDparams->divideLinesDraw, DIVIDE_LINES_WIDTH);
+
+	GLfloat dtheta = 2 * M_PI / (GLfloat) N_POINTS;
+	GLfloat theta = 0.0;
+
+	for (GLsizei i = 0; i < N_POINTS; i++) {
+		DTDparams->cos_[i] = cos(theta);
+		DTDparams->sin_[i] = sin(theta);
+
+		theta += dtheta;
+	}
+
+	DTDparams->searchPointsDraw = bov_points_new(DTDparams->delTri->points, DTDparams->delTri->n_points, GL_STATIC_DRAW);
+	DTDparams->circlePointsDraw = bov_points_new(DTDparams->circ, N_POINTS, GL_STATIC_DRAW);
+	DTDparams->searchPointsOrder = bov_order_new(DTDparams->searchPoints, 3, GL_STATIC_DRAW);
+
+	bov_points_set_color(DTDparams->searchPointsDraw, SEARCHED_POINTS_COLOR);
+	bov_points_set_width(DTDparams->searchPointsDraw, SEARCHED_POINTS_WIDTH);
+	bov_points_set_color(DTDparams->circlePointsDraw, CIRCLE_LINES_COLOR);
+	bov_points_set_width(DTDparams->circlePointsDraw, CIRCLE_LINES_WIDTH);
 
 	return DTDparams;
 }
 
+/*
+ * Sets the new triplet of points to be the triangle from which the
+ * cicurmcicle will be computed.
+ *
+ * DTDparams:	the DTDrawingParameters structure
+ * i_a,b,c:		the point indices
+ */
+void setSearchPoints(DTDrawingParameters *DTDparams,
+					 GLsizei i_a, GLsizei i_b ,GLsizei i_c) {
+
+	DTDparams->searchPoints[0] = i_a;
+	DTDparams->searchPoints[1] = i_b;
+	DTDparams->searchPoints[2] = i_c;
+
+	bov_order_update(DTDparams->searchPointsOrder, DTDparams->searchPoints, 3);
+
+	GLfloat radius, center[2];
+	radius = circleCenter(DTDparams->delTri, i_a, i_b, i_c, center);
+
+	for (GLsizei i = 0; i < N_POINTS; i++) {
+		DTDparams->circ[i][0] = center[0] + radius * DTDparams->cos_[i];
+		DTDparams->circ[i][1] = center[1] + radius * DTDparams->sin_[i];
+	}
+
+	bov_points_update(DTDparams->circlePointsDraw, DTDparams->circ, N_POINTS);
+
+}
+
+/*
+ * Adds a dividing line at pivot point.
+ *
+ * DTDparams:	the DTDrawingParameters structure
+ * pivot:		the pivot point (start of right half)
+ */
 GLsizei addDivideLine(DTDrawingParameters *DTDparams, GLsizei pivot) {
 	if (DTDparams->n_divides == DTDparams->n_divides_max) {
 		printf("ERROR: Not enough space was allocated for divide lines\n");
@@ -1696,6 +1752,9 @@ void freeDTDrawingParameters(DTDrawingParameters *DTDparams) {
 		if (DTDparams->divideLinesPoints != NULL) free(DTDparams->divideLinesPoints);
 		if (DTDparams->divideLinesDraw != NULL) bov_points_delete(DTDparams->divideLinesDraw);
 		if (DTDparams->divideLinesMask != NULL) free(DTDparams->divideLinesMask);
+		if (DTDparams->searchPointsDraw != NULL) bov_points_delete(DTDparams->searchPointsDraw);
+		if (DTDparams->circlePointsDraw != NULL) bov_points_delete(DTDparams->circlePointsDraw);
+		if (DTDparams->searchPointsOrder != NULL) bov_order_delete(DTDparams->searchPointsOrder);
 		free(DTDparams);
 	}
 }
@@ -1731,6 +1790,11 @@ void reDrawTriangulation(DTDrawingParameters *DTDparams,
 				bov_fast_lines_draw(DTDparams->window, DTDparams->divideLinesDraw, 2 * i, 2 * i + 2);
 			}
 		}
+
+		if (DTDparams->draw_circle) {
+				bov_fast_line_loop_draw(DTDparams->window, DTDparams->circlePointsDraw, 0, BOV_TILL_END);
+				bov_fast_points_draw_with_order(DTDparams->window, DTDparams->searchPointsDraw, DTDparams->searchPointsOrder, 0, BOV_TILL_END);
+		}
 	}
 	else {
 		bov_lines_draw(DTDparams->window, DTDparams->linesDraw, 0, BOV_TILL_END);
@@ -1741,6 +1805,11 @@ void reDrawTriangulation(DTDrawingParameters *DTDparams,
 			if (DTDparams->divideLinesMask[i]) {
 				bov_lines_draw(DTDparams->window, DTDparams->divideLinesDraw, 2 * i, 2 * i + 2);
 			}
+		}
+
+		if (DTDparams->draw_circle) {
+				bov_line_loop_draw(DTDparams->window, DTDparams->circlePointsDraw, 0, BOV_TILL_END);
+				bov_points_draw_with_order(DTDparams->window, DTDparams->searchPointsDraw, DTDparams->searchPointsOrder, 0, BOV_TILL_END);
 		}
 	}
 
@@ -1765,7 +1834,9 @@ void triangulateDTIllustrated(DTDrawingParameters *DTDparams) {
 	// Sort points by x coordinates then by y coordinate.
 	qsort(DTDparams->delTri->points, DTDparams->delTri->n_points, 2 * sizeof(GLfloat), compare_points);
 
+	DTDparams->draw_circle = 0;
 	reDrawTriangulation(DTDparams, 0, 0);
+	DTDparams->draw_circle = 1;
 
 	/// Starts the triangulation using a divide and conquer approach.
 	Edge *l, *r;
@@ -1792,7 +1863,9 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 		Edge *e = addEdge(delTri, start, start + 1);
 		*el = e;
 		*er = e->sym;
+		DTDparams->draw_circle = 0;
 		reDrawTriangulation(DTDparams, start, end);
+		DTDparams->draw_circle = 1;
 		return;
 	}
 	else if (n == 3) {
@@ -1806,6 +1879,8 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 		spliceEdges(delTri, a->sym, b);
 
 		int cmp = pointCompareEdge(delTri, start + 2, a);
+
+		setSearchPoints(DTDparams, a->orig, a->dest, b->dest);
 
 		// Now will close the triangle formed by the three points
 		if (cmp == 1) {
@@ -1835,7 +1910,9 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 		Edge *ldo, *ldi, *rdi, *rdo;
 
 		GLsizei divide_index = addDivideLine(DTDparams, start + m);
+		DTDparams->draw_circle = 0;
 		reDrawTriangulation(DTDparams, start, end);
+		DTDparams->draw_circle = 1;
 
 		triangulateIllustrated(delTri, start, 		start + m, 	&ldo, &ldi, DTDparams);
 		triangulateIllustrated(delTri, start + m, 	end, 		&rdi, &rdo, DTDparams);
@@ -1843,6 +1920,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 
 		// Computes the upper common tangent of left and right edges
 		while (1) {
+			setSearchPoints(DTDparams, rdi->orig, rdi->dest, ldi->dest);
 			if 		(pointCompareEdge(delTri, rdi->orig, ldi) ==  1) {
 				ldi = ldi->sym->onext;
 				reDrawTriangulation(DTDparams, start, end);
@@ -1857,6 +1935,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 		}
 
 		Edge *base;
+		DTDparams->draw_circle = 0;
 
 		// Creates an edge between rdi.orig and ldi.orig
 		base = connectEdges(delTri, ldi->sym, rdi);
@@ -1871,6 +1950,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 			rdo = base->sym;
 			reDrawTriangulation(DTDparams, start, end);
 		}
+		DTDparams->draw_circle = 1;
 
 		Edge *lcand, *rcand, *tmp;
 		int v_rcand, v_lcand;
@@ -1885,6 +1965,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 
 			v_rcand = (pointCompareEdge(delTri, rcand->dest, base) == 1);
 			v_lcand = (pointCompareEdge(delTri, lcand->dest, base) == 1);
+
 			if (!(v_rcand || v_lcand)) {
 				// Merge is done
 				break;
@@ -1898,6 +1979,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 						   tmp = rcand->onext;
 						   deleteEdge(delTri, rcand);
 						   rcand = tmp;
+						   setSearchPoints(DTDparams, base->dest, base->orig, rcand->dest);
 						   reDrawTriangulation(DTDparams, start, end);
 					   }
 			}
@@ -1910,6 +1992,7 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 						   tmp = lcand->oprev;
 						   deleteEdge(delTri, lcand);
 						   lcand = tmp;
+						   setSearchPoints(DTDparams, base->dest, base->orig, lcand->dest);
 						   reDrawTriangulation(DTDparams, start, end);
 					   }
 			}
@@ -1920,15 +2003,19 @@ void triangulateIllustrated(DelaunayTriangulation *delTri, GLsizei start, GLsize
 
 				tmp = connectEdges(delTri, lcand, base->sym);
 				base = tmp;
+				setSearchPoints(DTDparams, rcand->dest, rcand->orig, lcand->orig);
 				reDrawTriangulation(DTDparams, start, end);
 			}
 			else {
 				tmp = connectEdges(delTri, base->sym, rcand->sym);
 				base = tmp;
+				setSearchPoints(DTDparams, rcand->dest, rcand->orig, lcand->orig);
 				reDrawTriangulation(DTDparams, start, end);
 			}
 		}
+		DTDparams->draw_circle = 0;
 		reDrawTriangulation(DTDparams, start, end);
+		DTDparams->draw_circle = 1;
 		*el = ldo;
 		*er = rdo;
 	}
